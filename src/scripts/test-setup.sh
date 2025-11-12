@@ -219,6 +219,7 @@ generate_test_layout() {
         -e "s|{{K9S_RAY_DIR}}|$TEST_ROOT/k9s/ray|g" \
         -e "s|{{LOGS_DIR}}|$TEST_ROOT/logs|g" \
         -e "s|{{UTILS_DIR}}|$TEST_ROOT/utils|g" \
+        -e "s|{{ANALYSIS_DIR}}|$TEST_ROOT/analysis|g" \
         "$template_file" > "$TEST_LAYOUT_DIR/hyperpod.kdl"
 
     # Create a k9s wrapper script that provides helpful error messages
@@ -418,6 +419,11 @@ run_test() {
     mkdir -p "$TEST_ROOT/k9s/ray"
     mkdir -p "$TEST_ROOT/logs"
     mkdir -p "$TEST_ROOT/utils"
+    mkdir -p "$TEST_ROOT/analysis"
+
+    # Copy analyzer script
+    cp "$PROJECT_ROOT/src/scripts/watch-and-analyze.sh" "$TEST_ROOT/utils/"
+    chmod +x "$TEST_ROOT/utils/watch-and-analyze.sh"
 
     log_success "Test directories created"
 

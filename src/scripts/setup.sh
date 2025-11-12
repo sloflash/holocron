@@ -348,7 +348,11 @@ clone_repositories() {
 
     # Create workspace directory
     mkdir -p "$HOLOCRON_WORKSPACE"/{repo1,repo2,repo3}
-    mkdir -p "$HOLOCRON_DIR"/{k9s/{prod,dev,ray},logs,utils}
+    mkdir -p "$HOLOCRON_DIR"/{k9s/{prod,dev,ray},logs,utils,analysis}
+
+    # Copy analyzer script
+    cp "$PROJECT_ROOT/src/scripts/watch-and-analyze.sh" "$HOLOCRON_DIR/utils/"
+    chmod +x "$HOLOCRON_DIR/utils/watch-and-analyze.sh"
 
     log_success "Created workspace at $HOLOCRON_WORKSPACE"
 
@@ -478,6 +482,7 @@ generate_layout() {
         -e "s|{{K9S_RAY_DIR}}|$HOLOCRON_DIR/k9s/ray|g" \
         -e "s|{{LOGS_DIR}}|$HOLOCRON_DIR/logs|g" \
         -e "s|{{UTILS_DIR}}|$HOLOCRON_DIR/utils|g" \
+        -e "s|{{ANALYSIS_DIR}}|$HOLOCRON_DIR/analysis|g" \
         "$template_file" > "$LAYOUT_DIR/hyperpod.kdl"
 
     log_success "Layout saved to $LAYOUT_DIR/hyperpod.kdl"
