@@ -13,17 +13,10 @@
 
 keybinds {
     shared_except "locked" {
-        // Dump current pane with full scrollback
+        // Trigger AI analysis (plugin handles dump internally)
         bind "Alt a" {
-            Run "bash" "-c" "zellij action dump-screen --full /tmp/k9s-dump-latest.txt" {
-                close_on_exit true
-            }
-        }
-        // Analyze latest dump in floating pane
-        bind "Alt s" {
-            Run "{{UTILS_DIR}}/analyze-on-demand.sh" {
-                floating true
-                close_on_exit true
+            MessagePlugin "file:~/.config/zellij/plugins/k8s_analyzer.wasm" {
+                name "trigger_analyze"
             }
         }
     }
@@ -88,15 +81,13 @@ layout {
                 }
 
                 // ------------------------------------
-                // QUADRANT 2: Future Expansion
+                // QUADRANT 2: AI Analyzer
                 // Lower Left - 50% width x 20% height
-                // Placeholder pane
+                // AI-powered log analysis with Claude
                 // PINK/MAGENTA border (Solarized)
                 // ------------------------------------
                 pane size="20%" {
-                    command "zsh"
-                    name "OS-Logs"
-                    cwd "{{LOGS_DIR}}"
+                    plugin location="file:~/.config/zellij/plugins/k8s_analyzer.wasm"
                 }
             }
 
