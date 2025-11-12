@@ -295,16 +295,16 @@ install_rust() {
 }
 
 setup_wasm_target() {
-    log_info "Adding wasm32-wasi target..."
+    log_info "Adding wasm32-wasip1 target..."
 
-    if ! rustup target list | grep -q "wasm32-wasi (installed)"; then
-        if ! rustup target add wasm32-wasi; then
-            log_error "Failed to add wasm32-wasi target"
+    if ! rustup target list | grep -q "wasm32-wasip1 (installed)"; then
+        if ! rustup target add wasm32-wasip1; then
+            log_error "Failed to add wasm32-wasip1 target"
             return 1
         fi
-        log_success "wasm32-wasi target added"
+        log_success "wasm32-wasip1 target added"
     else
-        log_success "wasm32-wasi target already installed"
+        log_success "wasm32-wasip1 target already installed"
     fi
 }
 
@@ -348,7 +348,7 @@ install_rust_and_plugins() {
         fi
     fi
 
-    # Ensure wasm32-wasi target is installed
+    # Ensure wasm32-wasip1 target is installed
     setup_wasm_target || exit 1
 
     # Build plugins
@@ -413,21 +413,78 @@ collect_k8s_config() {
 
     k8s_enabled=true
 
-    # Show available contexts
+    # Get available contexts
+    mapfile -t available_contexts < <(kubectl config get-contexts -o name 2>/dev/null)
+
+    if [[ ${#available_contexts[@]} -eq 0 ]]; then
+        log_warn "No kubectl contexts found. Skipping configuration."
+        k8s_enabled=false
+        return
+    fi
+
+    # Show numbered list
+    echo ""
     log_info "Available kubectl contexts:"
-    kubectl config get-contexts -o name | sed 's/^/  - /'
+    for i in "${!available_contexts[@]}"; do
+        echo "  $((i+1)). ${available_contexts[$i]}"
+    done
+    echo ""
 
-    # Context 1
-    prompt "Enter kubectl context for Prod EKS (or press Enter to skip): "
-    read -r k8s_context1
+    prompt "How many contexts do you want to configure? (0-3): "
+    read -r num_contexts
+    num_contexts=${num_contexts:-3}
 
-    # Context 2
-    prompt "Enter kubectl context for Dev EKS (or press Enter to skip): "
-    read -r k8s_context2
+    # Limit to 3 for static template compatibility
+    if [[ $num_contexts -gt 3 ]]; then
+        log_warn "Maximum 3 contexts supported. Using 3."
+        num_contexts=3
+    fi
 
-    # Context 3
-    prompt "Enter kubectl context for Ray EKS (or press Enter to skip): "
-    read -r k8s_context3
+    # Collect contexts
+    k8s_context1=""
+    k8s_context2=""
+    k8s_context3=""
+
+    for ((i=1; i<=num_contexts; i++)); do
+        echo ""
+        prompt "Context #$i - Enter number from list above (or press Enter to skip): "
+        read -r selection
+
+        if [[ -z "$selection" ]]; then
+            log_info "Skipping context #$i"
+            continue
+        fi
+
+        # Validate selection is a number and in range
+        if [[ "$selection" =~ ^[0-9]+$ ]]; then
+            idx=$((selection - 1))
+            if [[ $idx -ge 0 && $idx -lt ${#available_contexts[@]} ]]; then
+                selected_context="${available_contexts[$idx]}"
+
+                # Validate context exists
+                if kubectl config get-contexts "$selected_context" &>/dev/null; then
+                    case $i in
+                        1) k8s_context1="$selected_context" ;;
+                        2) k8s_context2="$selected_context" ;;
+                        3) k8s_context3="$selected_context" ;;
+                    esac
+                    log_success "Added context #$i: $selected_context"
+                else
+                    log_warn "Context '$selected_context' not found. Skipping."
+                fi
+            else
+                log_warn "Invalid selection '$selection'. Skipping context #$i."
+            fi
+        else
+            log_warn "Please enter a number. Skipping context #$i."
+        fi
+    done
+
+    # Check if any contexts were configured
+    if [[ -z "$k8s_context1" && -z "$k8s_context2" && -z "$k8s_context3" ]]; then
+        log_warn "No valid contexts configured."
+        k8s_enabled=false
+    fi
 }
 
 # ============================================================================
@@ -438,8 +495,9 @@ clone_repositories() {
     echo ""
     log_info "Setting up workspace directories..."
 
-    # Create workspace directory
-    mkdir -p "$HOLOCRON_WORKSPACE"/{repo1,repo2,repo3}
+    # Create workspace directory structure
+    mkdir -p "$HOLOCRON_WORKSPACE"
+    mkdir -p "$HOLOCRON_WORKSPACE/.git-repos"
     mkdir -p "$HOLOCRON_DIR"/{k9s/{prod,dev,ray},logs,utils,analysis}
 
     # Copy analyzer script
@@ -448,49 +506,109 @@ clone_repositories() {
 
     log_success "Created workspace at $HOLOCRON_WORKSPACE"
 
-    # Clone repo1
+    # Setup repo1 with git worktree
     if [[ -n "$repo1_url" ]]; then
-        log_info "Cloning $repo1_name..."
-        if [[ -d "$HOLOCRON_WORKSPACE/repo1/.git" ]]; then
-            log_warn "repo1 already exists, skipping clone"
+        log_info "Setting up $repo1_name with git worktree..."
+
+        local bare_repo1="$HOLOCRON_WORKSPACE/.git-repos/repo1.git"
+        local worktree1="$HOLOCRON_WORKSPACE/repo1"
+
+        if [[ -d "$worktree1/.git" ]]; then
+            log_warn "repo1 worktree already exists, skipping"
         else
-            git clone "$repo1_url" "$HOLOCRON_WORKSPACE/repo1" || {
-                log_error "Failed to clone repo1"
-                log_warn "You can manually clone it later to: $HOLOCRON_WORKSPACE/repo1"
+            # Clone bare repository
+            if [[ ! -d "$bare_repo1" ]]; then
+                git clone --bare "$repo1_url" "$bare_repo1" || {
+                    log_error "Failed to clone bare repo for $repo1_name"
+                    log_warn "You can manually set it up later"
+                    return
+                }
+            fi
+
+            # Get default branch
+            local default_branch=$(git -C "$bare_repo1" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
+
+            # Create worktree with default branch
+            git -C "$bare_repo1" worktree add "$worktree1" "$default_branch" || {
+                log_error "Failed to create worktree for $repo1_name"
+                log_warn "You can manually create it with: git -C $bare_repo1 worktree add $worktree1 $default_branch"
+                return
             }
+
+            log_success "Created $repo1_name worktree on branch '$default_branch'"
         fi
     else
-        log_info "Skipping repo1 clone (no URL provided)"
+        log_info "Skipping repo1 (no URL provided)"
     fi
 
-    # Clone repo2
+    # Setup repo2 with git worktree
     if [[ -n "$repo2_url" ]]; then
-        log_info "Cloning $repo2_name..."
-        if [[ -d "$HOLOCRON_WORKSPACE/repo2/.git" ]]; then
-            log_warn "repo2 already exists, skipping clone"
+        log_info "Setting up $repo2_name with git worktree..."
+
+        local bare_repo2="$HOLOCRON_WORKSPACE/.git-repos/repo2.git"
+        local worktree2="$HOLOCRON_WORKSPACE/repo2"
+
+        if [[ -d "$worktree2/.git" ]]; then
+            log_warn "repo2 worktree already exists, skipping"
         else
-            git clone "$repo2_url" "$HOLOCRON_WORKSPACE/repo2" || {
-                log_error "Failed to clone repo2"
-                log_warn "You can manually clone it later to: $HOLOCRON_WORKSPACE/repo2"
+            # Clone bare repository
+            if [[ ! -d "$bare_repo2" ]]; then
+                git clone --bare "$repo2_url" "$bare_repo2" || {
+                    log_error "Failed to clone bare repo for $repo2_name"
+                    log_warn "You can manually set it up later"
+                    return
+                }
+            fi
+
+            # Get default branch
+            local default_branch=$(git -C "$bare_repo2" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
+
+            # Create worktree with default branch
+            git -C "$bare_repo2" worktree add "$worktree2" "$default_branch" || {
+                log_error "Failed to create worktree for $repo2_name"
+                log_warn "You can manually create it with: git -C $bare_repo2 worktree add $worktree2 $default_branch"
+                return
             }
+
+            log_success "Created $repo2_name worktree on branch '$default_branch'"
         fi
     else
-        log_info "Skipping repo2 clone (no URL provided)"
+        log_info "Skipping repo2 (no URL provided)"
     fi
 
-    # Clone repo3
+    # Setup repo3 with git worktree
     if [[ -n "$repo3_url" ]]; then
-        log_info "Cloning $repo3_name..."
-        if [[ -d "$HOLOCRON_WORKSPACE/repo3/.git" ]]; then
-            log_warn "repo3 already exists, skipping clone"
+        log_info "Setting up $repo3_name with git worktree..."
+
+        local bare_repo3="$HOLOCRON_WORKSPACE/.git-repos/repo3.git"
+        local worktree3="$HOLOCRON_WORKSPACE/repo3"
+
+        if [[ -d "$worktree3/.git" ]]; then
+            log_warn "repo3 worktree already exists, skipping"
         else
-            git clone "$repo3_url" "$HOLOCRON_WORKSPACE/repo3" || {
-                log_error "Failed to clone repo3"
-                log_warn "You can manually clone it later to: $HOLOCRON_WORKSPACE/repo3"
+            # Clone bare repository
+            if [[ ! -d "$bare_repo3" ]]; then
+                git clone --bare "$repo3_url" "$bare_repo3" || {
+                    log_error "Failed to clone bare repo for $repo3_name"
+                    log_warn "You can manually set it up later"
+                    return
+                }
+            fi
+
+            # Get default branch
+            local default_branch=$(git -C "$bare_repo3" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
+
+            # Create worktree with default branch
+            git -C "$bare_repo3" worktree add "$worktree3" "$default_branch" || {
+                log_error "Failed to create worktree for $repo3_name"
+                log_warn "You can manually create it with: git -C $bare_repo3 worktree add $worktree3 $default_branch"
+                return
             }
+
+            log_success "Created $repo3_name worktree on branch '$default_branch'"
         fi
     else
-        log_info "Skipping repo3 clone (no URL provided)"
+        log_info "Skipping repo3 (no URL provided)"
     fi
 }
 
@@ -553,6 +671,87 @@ generate_layout() {
 
     mkdir -p "$LAYOUT_DIR"
 
+    # Create k9s wrapper script that handles empty contexts
+    log_info "Creating k9s wrapper script..."
+    cat > "$CONFIG_DIR/k9s-wrapper.sh" <<'WRAPPER'
+#!/usr/bin/env bash
+# K9s wrapper for Holocron - handles empty contexts and missing dependencies
+
+# Check if k9s is installed
+if ! command -v k9s &> /dev/null; then
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "K9s is not installed!"
+    echo ""
+    echo "To install k9s:"
+    echo "  macOS:   brew install derailed/k9s/k9s"
+    echo "  Linux:   Check https://k9scli.io/topics/install/"
+    echo ""
+    echo "Starting zsh instead..."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    exec zsh
+fi
+
+# Check if kubectl is installed
+if ! command -v kubectl &> /dev/null; then
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "kubectl is not installed!"
+    echo ""
+    echo "To install kubectl:"
+    echo "  macOS:   brew install kubectl"
+    echo "  Linux:   Check https://kubernetes.io/docs/tasks/tools/"
+    echo ""
+    echo "Starting zsh instead..."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    exec zsh
+fi
+
+# Check for context argument
+context=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --context)
+            context="$2"
+            shift 2
+            ;;
+        *)
+            shift
+            ;;
+    esac
+done
+
+# If no context or empty context, start zsh instead
+if [[ -z "$context" ]]; then
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "No Kubernetes context configured for this pane"
+    echo ""
+    echo "To configure contexts, run: ./src/scripts/setup.sh"
+    echo ""
+    echo "Starting zsh instead..."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    exec zsh
+fi
+
+# Validate context exists
+if ! kubectl config get-contexts "$context" &>/dev/null; then
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Kubernetes context '$context' not found!"
+    echo ""
+    echo "Available contexts:"
+    kubectl config get-contexts -o name | sed 's/^/  - /'
+    echo ""
+    echo "To reconfigure, run: ./src/scripts/setup.sh"
+    echo ""
+    echo "Starting zsh instead..."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    exec zsh
+fi
+
+# Run k9s with the provided context
+exec k9s --context "$context"
+WRAPPER
+    chmod +x "$CONFIG_DIR/k9s-wrapper.sh"
+    log_success "k9s wrapper created at $CONFIG_DIR/k9s-wrapper.sh"
+
     # Read template
     template_file="$PROJECT_ROOT/src/layouts/hyperpod.kdl"
 
@@ -566,9 +765,9 @@ generate_layout() {
         -e "s|{{REPO_1_NAME}}|$repo1_name|g" \
         -e "s|{{REPO_2_NAME}}|$repo2_name|g" \
         -e "s|{{REPO_3_NAME}}|$repo3_name|g" \
-        -e "s|{{K8S_CONTEXT_1}}|${k8s_context1:-minikube}|g" \
-        -e "s|{{K8S_CONTEXT_2}}|${k8s_context2:-minikube}|g" \
-        -e "s|{{K8S_CONTEXT_3}}|${k8s_context3:-minikube}|g" \
+        -e "s|{{K8S_CONTEXT_1}}|${k8s_context1:-}|g" \
+        -e "s|{{K8S_CONTEXT_2}}|${k8s_context2:-}|g" \
+        -e "s|{{K8S_CONTEXT_3}}|${k8s_context3:-}|g" \
         -e "s|{{K9S_PROD_DIR}}|$HOLOCRON_DIR/k9s/prod|g" \
         -e "s|{{K9S_DEV_DIR}}|$HOLOCRON_DIR/k9s/dev|g" \
         -e "s|{{K9S_RAY_DIR}}|$HOLOCRON_DIR/k9s/ray|g" \

@@ -31,7 +31,7 @@ layout {
 
     // Pane template for K8s monitoring panes
     pane_template name="k9s-pane" {
-        command "k9s"
+        command "$HOME/.config/holocron/k9s-wrapper.sh"
         close_on_exit false
     }
 
