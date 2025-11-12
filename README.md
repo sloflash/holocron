@@ -7,7 +7,6 @@
 ## ✨ Features
 
 - **🎯 Quadrant-Based Layout**: Intelligent 4-quadrant workspace with stacked panes
-- **🤖 AI-Powered Analysis**: Press `Ctrl+Shift+A` in k9s panes to analyze with Claude
 - **📦 Portable Setup**: One command installs and configures across all your machines
 - **🔄 Git Integration**: Automatically clones and manages your repositories
 - **☸️ Kubernetes Ready**: Built-in k9s integration with multi-cluster support
@@ -36,7 +35,7 @@
 **Quadrant 1** (Upper Left): Stacked panes for 3 development repositories (zsh)
 **Quadrant 2** (Lower Left): OS logs and monitoring (zsh)
 **Quadrant 3** (Upper Right): Stacked k9s panes for Kubernetes clusters (prod/dev/ray)
-**Quadrant 4** (Lower Right): Analysis output - live Claude AI analysis results
+**Quadrant 4** (Lower Right): Cluster utilities and general purpose shell
 
 ## 📦 Installation
 
@@ -54,8 +53,7 @@ The installer will:
 3. 📝 Prompt for your Kubernetes contexts
 4. 📂 Clone repositories to `~/.holocron/workspace/`
 5. ⚙️ Generate customized Zellij layout
-6. ⌨️ Configure `Ctrl+Shift+A` keybinding for AI analysis
-7. 🚀 Create `holocron` launcher command
+6. 🚀 Create `holocron` launcher command
 
 ### Manual Installation
 
@@ -88,48 +86,8 @@ Holocron uses standard Zellij keybindings:
 - `Alt + [`: Cycle through stacked panes (Q1/Q3)
 - `Ctrl + p` + `d`: Detach from session
 - `Ctrl + p` + `q`: Quit Zellij
-- **`Ctrl + Shift + A`: Analyze current pane with Claude AI** 🤖
 
 See [Zellij keybindings](https://zellij.dev/documentation/keybindings) for more.
-
-## 🤖 AI Analysis Feature
-
-Holocron integrates Claude AI for intelligent Kubernetes cluster analysis.
-
-### How It Works
-
-1. **Navigate** to any k9s pane (Prod/Dev/Ray - upper right)
-2. **View** pods, logs, events, or any K8s resources
-3. **Press** `Ctrl+Shift+A`
-4. **Watch** the bottom-right "Analysis" pane for real-time results
-
-### What Gets Analyzed
-
-- Current screen content from your k9s pane
-- Pod states, error messages, resource usage
-- Warnings, anomalies, and potential issues
-- Recommendations for fixes and improvements
-
-### Requirements
-
-- **Claude CLI**: Install from [claude.ai/download](https://claude.ai/download)
-- Setup automatically configures the `Ctrl+Shift+A` keybinding
-
-### Analysis Output
-
-Results appear in the bottom-right Analysis pane showing:
-- Timestamp and source information
-- Claude's analysis of your K8s cluster state
-- Identified issues and recommendations
-- Raw capture saved to `/tmp/zellij-captures/`
-
-### Manual Analysis
-
-If you prefer, run the analyze script manually:
-
-```bash
-~/.holocron/utils/analyze-pane.sh
-```
 
 ## ⚙️ Configuration
 
@@ -170,8 +128,7 @@ The layout is generated from your configuration during setup. You can edit it di
 │   ├── dev/        # Dev EKS pane working directory
 │   └── ray/        # Ray EKS pane working directory
 ├── logs/           # OS logs pane working directory
-└── utils/          # Analysis scripts and utilities
-    └── analyze-pane.sh  # AI analysis script
+└── utils/          # Utilities directory
 
 ~/.config/holocron/
 ├── config.yaml     # Your configuration
@@ -179,11 +136,7 @@ The layout is generated from your configuration during setup. You can edit it di
     └── hyperpod.kdl  # Generated layout
 
 ~/.config/zellij/
-└── config.kdl      # Auto-configured with Ctrl+Shift+A keybinding
-
-/tmp/
-├── zellij-captures/          # Screen captures from analyze
-└── zellij-analysis-output.txt  # Live analysis results (tail -f)
+└── config.kdl      # Zellij configuration
 ```
 
 ## 🧪 Testing with Minikube
@@ -234,18 +187,14 @@ Contributions welcome! Please:
 - [x] Repository management
 - [x] Kubernetes integration
 - [x] Dependency installation
-- [x] AI-powered analysis with Claude
-- [x] Automatic keybinding configuration
 - [x] Proper CWD structure per pane
 - [x] Minikube test setup
 - [x] Solarized Dark theme support
-- [ ] Analysis for all three k9s contexts (dev/ray)
 - [ ] Pipe-based Q3 → Q4 communication
 - [ ] Custom Q4 utilities
 - [ ] Multi-workspace support
 - [ ] Session persistence
 - [ ] Cloud integration (AWS/GCP)
-- [ ] Analysis history and export
 
 ## 📝 License
 

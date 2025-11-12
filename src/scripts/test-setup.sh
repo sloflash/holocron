@@ -263,6 +263,14 @@ WRAPPER
 }
 
 # ============================================================================
+# Configure Zellij Keybindings for Test
+# ============================================================================
+
+configure_test_keybindings() {
+    log_info "Test keybinding configuration skipped (no custom keybindings)"
+}
+
+# ============================================================================
 # Dependency Check
 # ============================================================================
 
@@ -379,93 +387,8 @@ check_dependencies() {
 }
 
 # ============================================================================
-# Analyze Script Creation
+# Removed: Analyze Script Creation (no longer needed)
 # ============================================================================
-
-create_analyze_script() {
-    local pane_dir="$1"
-    local cluster_name="$2"
-
-    cat > "$pane_dir/analyze.sh" <<'ANALYZE_SCRIPT'
-#!/usr/bin/env zsh
-# K9s Analyze Script - Capture and analyze Kubernetes logs with Claude
-
-analyze() {
-    local CLUSTER="${1:-current}"
-    local TMPFILE="${ZELLIJ_SESSION_NAME:+/tmp/zellij-${ZELLIJ_SESSION_NAME}}-analyze-${CLUSTER}.txt"
-
-    # Fallback if not in Zellij
-    if [[ -z "$TMPFILE" ]]; then
-        TMPFILE="/tmp/zellij-analyze-${CLUSTER}-$$.txt"
-    fi
-
-    echo "🔍 Capturing pane content for ${CLUSTER}..."
-
-    # Ensure clean slate
-    rm -f "$TMPFILE"
-
-    # Dump current pane screen content
-    if command -v zellij &> /dev/null; then
-        zellij action dump-screen "$TMPFILE"
-    else
-        echo "❌ Zellij not found or not in a Zellij session"
-        return 1
-    fi
-
-    # Verify file was created and has content
-    if [[ ! -s "$TMPFILE" ]]; then
-        echo "❌ Failed to capture pane content"
-        return 1
-    fi
-
-    local line_count=$(wc -l < "$TMPFILE")
-    echo "✅ Captured ${line_count} lines from ${CLUSTER}"
-
-    # Check if claude command exists
-    if ! command -v claude &> /dev/null; then
-        echo "❌ 'claude' command not found. Please install Claude CLI."
-        echo "📁 Content saved to: $TMPFILE"
-        echo "   You can manually review or pipe to another tool."
-        return 1
-    fi
-
-    # Analyze with Claude
-    echo "🤖 Analyzing with Claude..."
-    claude "Analyze these K8s logs from ${CLUSTER} cluster. Look for errors, warnings, resource issues, or anomalies:" < "$TMPFILE"
-
-    # Keep the file for manual inspection
-    echo ""
-    echo "📁 Raw content saved to: $TMPFILE"
-}
-
-# Make analyze function available
-export -f analyze 2>/dev/null || true
-
-# Show help on load
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "K9s Analyze Script Loaded"
-echo ""
-echo "Usage:"
-echo "  analyze [cluster-name]"
-echo ""
-echo "Example:"
-echo "  analyze prod-eks"
-echo ""
-echo "This will:"
-echo "  1. Capture current k9s pane content"
-echo "  2. Send to Claude for analysis"
-echo "  3. Save raw output to /tmp for inspection"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-ANALYZE_SCRIPT
-
-    chmod +x "$pane_dir/analyze.sh"
-
-    # Replace CLUSTER placeholder with actual cluster name
-    sed -i.bak "s/current/${cluster_name}/g" "$pane_dir/analyze.sh"
-    rm -f "$pane_dir/analyze.sh.bak"
-
-    log_success "Created analyze script in $pane_dir"
-}
 
 # ============================================================================
 # Main Test Flow
@@ -495,24 +418,8 @@ run_test() {
     mkdir -p "$TEST_ROOT/k9s/ray"
     mkdir -p "$TEST_ROOT/logs"
     mkdir -p "$TEST_ROOT/utils"
-    mkdir -p "/tmp/zellij-captures"
-
-    # Initialize analysis output file
-    touch /tmp/zellij-analysis-output.txt
 
     log_success "Test directories created"
-
-    # Copy analyze script to utils directory for easy access
-    log_info "Setting up analysis infrastructure..."
-    cp "$PROJECT_ROOT/src/scripts/analyze-pane.sh" "$TEST_ROOT/utils/"
-    chmod +x "$TEST_ROOT/utils/analyze-pane.sh"
-
-    # Create analyze script for k9s panes
-    log_info "Creating analyze scripts for k9s panes..."
-    create_analyze_script "$TEST_ROOT/k9s/prod" "prod-eks"
-    # TODO: Uncomment for dev and ray when ready to test
-    # create_analyze_script "$TEST_ROOT/k9s/dev" "dev-eks"
-    # create_analyze_script "$TEST_ROOT/k9s/ray" "ray-eks"
 
     # Create test repos
     create_test_repos
@@ -520,6 +427,9 @@ run_test() {
     # Generate config and layout
     generate_test_config
     generate_test_layout
+
+    # Configure keybindings
+    configure_test_keybindings
 
     # Success message
     echo ""
@@ -535,21 +445,6 @@ run_test() {
     echo ""
     echo "To launch the test workspace:"
     echo -e "  ${GREEN}zellij --layout $TEST_LAYOUT_DIR/hyperpod.kdl${NC}"
-    echo ""
-    echo "To enable the Ctrl+Shift+A analyze hotkey:"
-    echo "  1. Add this to your ~/.config/zellij/config.kdl:"
-    echo ""
-    echo "     shared_except \"locked\" {"
-    echo "         bind \"Ctrl Shift A\" {"
-    echo "             Run \"bash\" {"
-    echo "                 args \"-c\" \"$TEST_ROOT/utils/analyze-pane.sh\""
-    echo "                 close_on_exit true"
-    echo "                 floating true"
-    echo "             }"
-    echo "         }"
-    echo "     }"
-    echo ""
-    echo "  2. Or run manually from k9s panes: $TEST_ROOT/utils/analyze-pane.sh"
     echo ""
     echo "To clean up after testing:"
     echo -e "  ${YELLOW}rm -rf $TEST_ROOT${NC}"
@@ -615,9 +510,7 @@ main() {
     esac
 }
 
-# Trap cleanup on exit unless NO_CLEANUP is set
-if [[ "${NO_CLEANUP:-false}" != "true" ]]; then
-    trap cleanup EXIT INT TERM
-fi
+# Don't automatically cleanup in setup mode
+# Only trap cleanup in cleanup mode or interactive mode with user confirmation
 
 main "$@"

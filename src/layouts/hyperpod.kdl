@@ -11,6 +11,15 @@
 //   Customize repository paths and K8s contexts in the setup script
 //   This is a template - variables will be replaced during installation
 
+keybinds {
+    shared_except "locked" {
+        // Dump current pane to fixed file location
+        bind "Alt a" {
+            DumpScreen "/tmp/k9s-dump-latest.txt";
+        }
+    }
+}
+
 layout {
     // Pane template for repository panes
     pane_template name="repo-pane" {
@@ -19,10 +28,8 @@ layout {
     }
 
     // Pane template for K8s monitoring panes
-    // Note: Execute startup script that sources analyze.sh and launches k9s
     pane_template name="k9s-pane" {
-        command "zsh"
-        args "-c" "source ./analyze.sh; exec k9s"
+        command "k9s"
         close_on_exit false
     }
 
@@ -102,30 +109,29 @@ layout {
                         expanded true
                         name "Prod EKS"
                         cwd "{{K9S_PROD_DIR}}"
-                        args "-c" "source ./analyze.sh 2>/dev/null; exec k9s --context {{K8S_CONTEXT_1}}"
+                        args "--context" "{{K8S_CONTEXT_1}}"
                     }
                     k9s-pane {
                         name "Dev EKS"
                         cwd "{{K9S_DEV_DIR}}"
-                        args "-c" "source ./analyze.sh 2>/dev/null; exec k9s --context {{K8S_CONTEXT_2}}"
+                        args "--context" "{{K8S_CONTEXT_2}}"
                     }
                     k9s-pane {
                         name "Ray EKS"
                         cwd "{{K9S_RAY_DIR}}"
-                        args "-c" "source ./analyze.sh 2>/dev/null; exec k9s --context {{K8S_CONTEXT_3}}"
+                        args "--context" "{{K8S_CONTEXT_3}}"
                     }
                 }
 
                 // ------------------------------------
-                // QUADRANT 4: Cluster Utilities / Analysis Output
+                // QUADRANT 4: Cluster Utilities
                 // Lower Right - 50% width x 20% height
-                // Monitors analysis output from k9s panes
+                // General purpose shell
                 // YELLOW border (Solarized)
                 // ------------------------------------
                 pane size="20%" {
                     command "zsh"
-                    args "-c" "tail -f /tmp/zellij-analysis-output.txt 2>/dev/null || { echo '🔍 Waiting for analysis... Press Ctrl+Shift+A in k9s panes to analyze'; tail -f /tmp/zellij-analysis-output.txt; }"
-                    name "Analysis"
+                    name "Utils"
                     cwd "{{UTILS_DIR}}"
                 }
             }

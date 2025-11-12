@@ -349,17 +349,8 @@ clone_repositories() {
     # Create workspace directory
     mkdir -p "$HOLOCRON_WORKSPACE"/{repo1,repo2,repo3}
     mkdir -p "$HOLOCRON_DIR"/{k9s/{prod,dev,ray},logs,utils}
-    mkdir -p "/tmp/zellij-captures"
-
-    # Initialize analysis infrastructure
-    touch /tmp/zellij-analysis-output.txt
-
-    # Copy analyze script
-    cp "$PROJECT_ROOT/src/scripts/analyze-pane.sh" "$HOLOCRON_DIR/utils/"
-    chmod +x "$HOLOCRON_DIR/utils/analyze-pane.sh"
 
     log_success "Created workspace at $HOLOCRON_WORKSPACE"
-    log_success "Created analysis infrastructure"
 
     # Clone repo1
     if [[ -n "$repo1_url" ]]; then
@@ -498,78 +489,7 @@ generate_layout() {
 
 configure_zellij_keybindings() {
     echo ""
-    log_info "Configuring Zellij keybindings..."
-
-    local zellij_config="$HOME/.config/zellij/config.kdl"
-    local analyze_script="$HOLOCRON_DIR/utils/analyze-pane.sh"
-
-    # Create zellij config directory if it doesn't exist
-    mkdir -p "$(dirname "$zellij_config")"
-
-    # Check if config exists
-    if [[ ! -f "$zellij_config" ]]; then
-        log_info "Creating new Zellij config..."
-        cat > "$zellij_config" <<'ZELLIJ_CONFIG'
-keybinds {
-    shared_except "locked" {
-        // Placeholder for Holocron keybindings
-    }
-}
-ZELLIJ_CONFIG
-    fi
-
-    # Check if our keybinding already exists
-    if grep -q "Ctrl Shift A.*analyze-pane" "$zellij_config" 2>/dev/null; then
-        log_info "Analyze keybinding already configured"
-        return
-    fi
-
-    # Add our keybinding to the config
-    log_info "Adding Ctrl+Shift+A analyze keybinding..."
-
-    # Find the shared_except "locked" block and add our binding
-    if grep -q 'shared_except "locked"' "$zellij_config"; then
-        # Insert after the shared_except "locked" line
-        sed -i.bak '/shared_except "locked" {/a\
-        // Holocron: Analyze current pane with Claude\
-        bind "Ctrl Shift A" {\
-            Run "bash" {\
-                args "-c" "'"$analyze_script"'"\
-                close_on_exit true\
-                floating true\
-                width "50%"\
-                height "20%"\
-                x "25%"\
-                y "40%"\
-            }\
-        }\
-
-' "$zellij_config"
-        rm -f "$zellij_config.bak"
-        log_success "Added analyze keybinding to $zellij_config"
-    else
-        # Create the whole keybinds block
-        cat >> "$zellij_config" <<KEYBIND
-
-keybinds {
-    shared_except "locked" {
-        // Holocron: Analyze current pane with Claude
-        bind "Ctrl Shift A" {
-            Run "bash" {
-                args "-c" "$analyze_script"
-                close_on_exit true
-                floating true
-                width "50%"
-                height "20%"
-                x "25%"
-                y "40%"
-            }
-        }
-    }
-}
-KEYBIND
-        log_success "Created keybindings in $zellij_config"
-    fi
+    log_info "Zellij keybinding configuration skipped (no custom keybindings)"
 }
 
 # ============================================================================
@@ -679,11 +599,6 @@ main() {
     echo "Configuration saved to: $CONFIG_FILE"
     echo "Layout saved to: $LAYOUT_DIR/hyperpod.kdl"
     echo "Workspace directory: $HOLOCRON_WORKSPACE"
-    echo ""
-    echo "Analysis Features:"
-    echo -e "  ${BLUE}Press Ctrl+Shift+A in k9s panes to analyze with Claude${NC}"
-    echo "  Results appear in bottom-right Analysis pane"
-    echo "  Analyze script: $HOLOCRON_DIR/utils/analyze-pane.sh"
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 }
