@@ -771,6 +771,8 @@ WRAPPER
         -e "s|{{K9S_PROD_DIR}}|$HOLOCRON_DIR/k9s/prod|g" \
         -e "s|{{K9S_DEV_DIR}}|$HOLOCRON_DIR/k9s/dev|g" \
         -e "s|{{K9S_RAY_DIR}}|$HOLOCRON_DIR/k9s/ray|g" \
+        -e "s|{{K9S_WRAPPER_PATH}}|$CONFIG_DIR/k9s-wrapper.sh|g" \
+        -e "s|{{PLUGIN_PATH}}|$HOME/.config/zellij/plugins/k8s_analyzer.wasm|g" \
         -e "s|{{LOGS_DIR}}|$HOLOCRON_DIR/logs|g" \
         -e "s|{{UTILS_DIR}}|$HOLOCRON_DIR/utils|g" \
         -e "s|{{ANALYSIS_DIR}}|$HOLOCRON_DIR/analysis|g" \

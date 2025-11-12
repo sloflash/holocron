@@ -1,9 +1,6 @@
 use zellij_tile::prelude::*;
 use std::collections::BTreeMap;
 
-// Zellij 0.43+ moved Key to generated API
-use zellij_tile::prelude::Key;
-
 #[derive(Default)]
 struct State {
     // Pane tracking
@@ -120,47 +117,40 @@ impl ZellijPlugin for State {
 }
 
 impl State {
-    fn handle_key(&mut self, key: Key) -> bool {
+    fn handle_key(&mut self, key: KeyWithModifier) -> bool {
         match self.view_mode {
             ViewMode::PaneList => {
-                match key {
-                    Key::Down => {
-                        if !self.available_panes.is_empty() && self.selected_index < self.available_panes.len() - 1 {
-                            self.selected_index += 1;
-                            return true;
-                        }
-                    }
-                    Key::Up => {
-                        if self.selected_index > 0 {
-                            self.selected_index -= 1;
-                            return true;
-                        }
-                    }
-                    Key::Char('\n') => {
-                        // Enter key triggers analysis
-                        self.start_analysis();
+                if key.is_key_without_modifier(BareKey::Down) {
+                    if !self.available_panes.is_empty() && self.selected_index < self.available_panes.len() - 1 {
+                        self.selected_index += 1;
                         return true;
                     }
-                    _ => {}
+                } else if key.is_key_without_modifier(BareKey::Up) {
+                    if self.selected_index > 0 {
+                        self.selected_index -= 1;
+                        return true;
+                    }
+                } else if key.is_key_without_modifier(BareKey::Enter) {
+                    // Enter key triggers analysis
+                    self.start_analysis();
+                    return true;
                 }
             }
 
             ViewMode::Results => {
-                match key {
-                    Key::Esc | Key::Char('b') | Key::Char('q') => {
-                        // Back to pane list
-                        self.view_mode = ViewMode::PaneList;
-                        self.analysis_progress = AnalysisProgress::Idle;
-                        self.analysis_result = None;
-                        self.error_message = None;
-                        return true;
-                    }
-                    Key::Char('r') => {
-                        // Re-analyze
-                        self.start_analysis();
-                        return true;
-                    }
-                    _ => {}
+                if key.is_key_without_modifier(BareKey::Esc)
+                    || key.is_key_without_modifier(BareKey::Char('b'))
+                    || key.is_key_without_modifier(BareKey::Char('q')) {
+                    // Back to pane list
+                    self.view_mode = ViewMode::PaneList;
+                    self.analysis_progress = AnalysisProgress::Idle;
+                    self.analysis_result = None;
+                    self.error_message = None;
+                    return true;
+                } else if key.is_key_without_modifier(BareKey::Char('r')) {
+                    // Re-analyze
+                    self.start_analysis();
+                    return true;
                 }
             }
 
@@ -197,9 +187,20 @@ impl State {
             context.insert("logfile".to_string(), logfile.clone());
             context.insert("pane_id".to_string(), pane.id.to_string());
 
-            // Run dump command
+            // CRITICAL: Focus the target pane first using Zellij API
+            // dump-screen dumps the FOCUSED pane, not a specific pane ID
+            focus_terminal_pane(pane.id, true); // true = switch to pane's tab if needed
+
+            // Small delay to ensure focus completes, then dump
+            // We use a shell command to wait and dump
+            let dump_command = format!(
+                "sleep 0.1 && zellij action dump-screen --full {}",
+                logfile
+            );
+
+            // Run dump command (will dump the now-focused target pane)
             run_command(
-                &["zellij", "action", "dump-screen", "--full", &logfile],
+                &["sh", "-c", &dump_command],
                 context,
             );
         }
@@ -266,7 +267,7 @@ impl State {
         );
     }
 
-    fn render_pane_list(&self, rows: usize, cols: usize) {
+    fn render_pane_list(&self, _rows: usize, cols: usize) {
         println!("╔{}╗", "═".repeat(cols.saturating_sub(2)));
         println!("║ 📊 AI Analyzer{}║", " ".repeat(cols.saturating_sub(17)));
         println!("╚{}╝", "═".repeat(cols.saturating_sub(2)));
@@ -304,7 +305,7 @@ impl State {
         println!("Enter  Analyze selected");
     }
 
-    fn render_analyzing(&self, rows: usize, cols: usize) {
+    fn render_analyzing(&self, _rows: usize, cols: usize) {
         println!("╔{}╗", "═".repeat(cols.saturating_sub(2)));
         println!("║ 🤖 Analyzing...{}║", " ".repeat(cols.saturating_sub(18)));
         println!("╚{}╝", "═".repeat(cols.saturating_sub(2)));

@@ -15,7 +15,7 @@ keybinds {
     shared_except "locked" {
         // Trigger AI analysis (plugin handles dump internally)
         bind "Alt a" {
-            MessagePlugin "file:~/.config/zellij/plugins/k8s_analyzer.wasm" {
+            MessagePlugin "file:{{PLUGIN_PATH}}" {
                 name "trigger_analyze"
             }
         }
@@ -31,7 +31,7 @@ layout {
 
     // Pane template for K8s monitoring panes
     pane_template name="k9s-pane" {
-        command "$HOME/.config/holocron/k9s-wrapper.sh"
+        command "{{K9S_WRAPPER_PATH}}"
         close_on_exit false
     }
 
@@ -86,8 +86,8 @@ layout {
                 // AI-powered log analysis with Claude
                 // PINK/MAGENTA border (Solarized)
                 // ------------------------------------
-                pane size="20%" {
-                    plugin location="file:~/.config/zellij/plugins/k8s_analyzer.wasm"
+                pane size="20%" name="k8s Logs" {
+                    plugin location="file:{{PLUGIN_PATH}}"
                 }
             }
 

@@ -217,6 +217,8 @@ generate_test_layout() {
         -e "s|{{K9S_PROD_DIR}}|$TEST_ROOT/k9s/prod|g" \
         -e "s|{{K9S_DEV_DIR}}|$TEST_ROOT/k9s/dev|g" \
         -e "s|{{K9S_RAY_DIR}}|$TEST_ROOT/k9s/ray|g" \
+        -e "s|{{K9S_WRAPPER_PATH}}|$TEST_CONFIG_DIR/k9s-wrapper.sh|g" \
+        -e "s|{{PLUGIN_PATH}}|$HOME/.config/zellij/plugins/k8s_analyzer.wasm|g" \
         -e "s|{{LOGS_DIR}}|$TEST_ROOT/logs|g" \
         -e "s|{{UTILS_DIR}}|$TEST_ROOT/utils|g" \
         -e "s|{{ANALYSIS_DIR}}|$TEST_ROOT/analysis|g" \

@@ -26,7 +26,7 @@ cargo build --release --target wasm32-wasip1
 
 if [ $? -eq 0 ]; then
     echo "✅ k8s-analyzer built successfully"
-    cp target/wasm32-wasip1/release/k8s_analyzer.wasm "$OUTPUT_DIR/"
+    cp target/wasm32-wasip1/release/k8s-analyzer.wasm "$OUTPUT_DIR/k8s_analyzer.wasm"
     echo "📦 Installed to: $OUTPUT_DIR/k8s_analyzer.wasm"
 else
     echo "❌ k8s-analyzer build failed"
