@@ -491,6 +491,44 @@ collect_k8s_config() {
 # Repository Management
 # ============================================================================
 
+# Detect default branch from a git repository (tries main, master, then symbolic-ref)
+detect_default_branch() {
+    local repo_path="$1"
+    local branch=""
+
+    # Method 1: Try symbolic-ref (most reliable if set)
+    branch=$(git -C "$repo_path" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+
+    if [[ -n "$branch" ]]; then
+        echo "$branch"
+        return 0
+    fi
+
+    # Method 2: Check if 'main' exists
+    if git -C "$repo_path" show-ref --verify --quiet refs/remotes/origin/main; then
+        echo "main"
+        return 0
+    fi
+
+    # Method 3: Check if 'master' exists
+    if git -C "$repo_path" show-ref --verify --quiet refs/remotes/origin/master; then
+        echo "master"
+        return 0
+    fi
+
+    # Method 4: Fall back to first branch found
+    branch=$(git -C "$repo_path" branch -r | grep 'origin/' | grep -v 'HEAD' | head -1 | sed 's@.*origin/@@' | xargs)
+
+    if [[ -n "$branch" ]]; then
+        echo "$branch"
+        return 0
+    fi
+
+    # Last resort: assume main
+    echo "main"
+    return 1
+}
+
 clone_repositories() {
     echo ""
     log_info "Setting up workspace directories..."
@@ -525,13 +563,14 @@ clone_repositories() {
                 }
             fi
 
-            # Get default branch
-            local default_branch=$(git -C "$bare_repo1" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
+            # Detect default branch (tries main, master, symbolic-ref, etc.)
+            local default_branch=$(detect_default_branch "$bare_repo1")
+            log_info "Detected default branch: $default_branch"
 
             # Create worktree with default branch
             git -C "$bare_repo1" worktree add "$worktree1" "$default_branch" || {
-                log_error "Failed to create worktree for $repo1_name"
-                log_warn "You can manually create it with: git -C $bare_repo1 worktree add $worktree1 $default_branch"
+                log_error "Failed to create worktree for $repo1_name on branch '$default_branch'"
+                log_warn "You can manually create it with: git -C $bare_repo1 worktree add $worktree1 <branch-name>"
                 return
             }
 
@@ -560,13 +599,14 @@ clone_repositories() {
                 }
             fi
 
-            # Get default branch
-            local default_branch=$(git -C "$bare_repo2" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
+            # Detect default branch (tries main, master, symbolic-ref, etc.)
+            local default_branch=$(detect_default_branch "$bare_repo2")
+            log_info "Detected default branch: $default_branch"
 
             # Create worktree with default branch
             git -C "$bare_repo2" worktree add "$worktree2" "$default_branch" || {
-                log_error "Failed to create worktree for $repo2_name"
-                log_warn "You can manually create it with: git -C $bare_repo2 worktree add $worktree2 $default_branch"
+                log_error "Failed to create worktree for $repo2_name on branch '$default_branch'"
+                log_warn "You can manually create it with: git -C $bare_repo2 worktree add $worktree2 <branch-name>"
                 return
             }
 
@@ -595,13 +635,14 @@ clone_repositories() {
                 }
             fi
 
-            # Get default branch
-            local default_branch=$(git -C "$bare_repo3" symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "main")
+            # Detect default branch (tries main, master, symbolic-ref, etc.)
+            local default_branch=$(detect_default_branch "$bare_repo3")
+            log_info "Detected default branch: $default_branch"
 
             # Create worktree with default branch
             git -C "$bare_repo3" worktree add "$worktree3" "$default_branch" || {
-                log_error "Failed to create worktree for $repo3_name"
-                log_warn "You can manually create it with: git -C $bare_repo3 worktree add $worktree3 $default_branch"
+                log_error "Failed to create worktree for $repo3_name on branch '$default_branch'"
+                log_warn "You can manually create it with: git -C $bare_repo3 worktree add $worktree3 <branch-name>"
                 return
             }
 
