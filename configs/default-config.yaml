@@ -1,0 +1,65 @@
+# Holocron - Default Configuration
+# This file contains default values for the Hyperpod workspace
+# Copy to ~/.config/holocron/config.yaml and customize
+
+# Repository Paths
+# These will be used in Q1 (stacked repository panes)
+repositories:
+  repo1:
+    name: "Driving"
+    path: "~/driving"
+    description: "Primary development repository"
+
+  repo2:
+    name: "K8s"
+    path: "~/k8s"
+    description: "Kubernetes configurations"
+
+  repo3:
+    name: "Deploy"
+    path: "~/k8s-deploy"
+    description: "Deployment configurations"
+
+# Kubernetes Contexts
+# These will be used in Q3 (stacked k9s panes)
+# Set enabled: false to skip a context
+kubernetes:
+  context1:
+    name: "Prod EKS"
+    context: "prod-eks-cluster"
+    enabled: true
+    description: "Production EKS cluster"
+
+  context2:
+    name: "Dev EKS"
+    context: "dev-eks-cluster"
+    enabled: true
+    description: "Development EKS cluster"
+
+  context3:
+    name: "Ray EKS"
+    context: "prod-ray-eks-cluster"
+    enabled: true
+    description: "Production Ray EKS cluster"
+
+# Workspace Settings
+workspace:
+  name: "Hyperpod"
+  layout_path: "~/.config/holocron/layouts/hyperpod.kdl"
+
+# Optional: Custom commands for panes
+# commands:
+#   q2_command: "tail -f /var/log/system.log"
+#   q4_command: "echo 'Cluster utilities placeholder'"
+
+# Dependencies (checked during setup)
+dependencies:
+  required:
+    - zellij
+    - git
+  optional:
+    - kubectl
+    - k9s
+    - python3
+    - rustc
+    - terraform

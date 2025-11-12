@@ -1,0 +1,120 @@
+// Holocron - Hyperpod Layout
+// A sophisticated 4-quadrant terminal workspace for development and K8s management
+//
+// Quadrants:
+//   Q1 (Upper Left 50%x80%): Stacked repository panes
+//   Q2 (Lower Left 50%x20%): Placeholder for future expansion
+//   Q3 (Upper Right 50%x80%): Stacked K8s monitoring panes
+//   Q4 (Lower Right 50%x20%): Cluster utilities
+//
+// Configuration:
+//   Customize repository paths and K8s contexts in the setup script
+//   This is a template - variables will be replaced during installation
+
+// Pane template for repository panes
+pane_template name="repo-pane" {
+    command "bash"
+    close_on_exit false
+}
+
+// Pane template for K8s monitoring panes
+pane_template name="k9s-pane" {
+    command "k9s"
+    close_on_exit false
+}
+
+layout {
+    // Default tab template with status bars
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        children
+        pane size=2 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+
+    // Main Hyperpod workspace tab
+    tab name="Hyperpod" focus=true {
+        pane split_direction="vertical" {
+
+            // ========================================
+            // LEFT HALF (50% width)
+            // ========================================
+            pane split_direction="horizontal" size="50%" {
+
+                // ------------------------------------
+                // QUADRANT 1: Development Repositories
+                // Upper Left - 50% width x 80% height
+                // Stacked panes for 3 repos
+                // ------------------------------------
+                pane size="80%" {
+                    stacked true
+
+                    repo-pane {
+                        expanded true
+                        name "{{REPO_1_NAME}}"
+                        cwd "{{HOLOCRON_WORKSPACE}}/repo1"
+                        focus true
+                    }
+                    repo-pane {
+                        name "{{REPO_2_NAME}}"
+                        cwd "{{HOLOCRON_WORKSPACE}}/repo2"
+                    }
+                    repo-pane {
+                        name "{{REPO_3_NAME}}"
+                        cwd "{{HOLOCRON_WORKSPACE}}/repo3"
+                    }
+                }
+
+                // ------------------------------------
+                // QUADRANT 2: Future Expansion
+                // Lower Left - 50% width x 20% height
+                // Placeholder pane
+                // ------------------------------------
+                pane size="20%" {
+                    name "Q2-Logs"
+                }
+            }
+
+            // ========================================
+            // RIGHT HALF (50% width)
+            // ========================================
+            pane split_direction="horizontal" size="50%" {
+
+                // ------------------------------------
+                // QUADRANT 3: Kubernetes Monitoring
+                // Upper Right - 50% width x 80% height
+                // Stacked k9s panes for clusters
+                // ------------------------------------
+                pane size="80%" {
+                    stacked true
+
+                    k9s-pane {
+                        expanded true
+                        name "Prod EKS"
+                        args "--context" "{{K8S_CONTEXT_1}}"
+                    }
+                    k9s-pane {
+                        name "Dev EKS"
+                        args "--context" "{{K8S_CONTEXT_2}}"
+                    }
+                    k9s-pane {
+                        name "Ray EKS"
+                        args "--context" "{{K8S_CONTEXT_3}}"
+                    }
+                }
+
+                // ------------------------------------
+                // QUADRANT 4: Cluster Utilities
+                // Lower Right - 50% width x 20% height
+                // Connected to Q3 via pipes (future)
+                // ------------------------------------
+                pane size="20%" {
+                    name "Cluster-Utils"
+                }
+            }
+        }
+    }
+}
