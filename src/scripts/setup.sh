@@ -348,7 +348,18 @@ clone_repositories() {
 
     # Create workspace directory
     mkdir -p "$HOLOCRON_WORKSPACE"/{repo1,repo2,repo3}
+    mkdir -p "$HOLOCRON_DIR"/{k9s/{prod,dev,ray},logs,utils}
+    mkdir -p "/tmp/zellij-captures"
+
+    # Initialize analysis infrastructure
+    touch /tmp/zellij-analysis-output.txt
+
+    # Copy analyze script
+    cp "$PROJECT_ROOT/src/scripts/analyze-pane.sh" "$HOLOCRON_DIR/utils/"
+    chmod +x "$HOLOCRON_DIR/utils/analyze-pane.sh"
+
     log_success "Created workspace at $HOLOCRON_WORKSPACE"
+    log_success "Created analysis infrastructure"
 
     # Clone repo1
     if [[ -n "$repo1_url" ]]; then
@@ -471,9 +482,94 @@ generate_layout() {
         -e "s|{{K8S_CONTEXT_1}}|${k8s_context1:-minikube}|g" \
         -e "s|{{K8S_CONTEXT_2}}|${k8s_context2:-minikube}|g" \
         -e "s|{{K8S_CONTEXT_3}}|${k8s_context3:-minikube}|g" \
+        -e "s|{{K9S_PROD_DIR}}|$HOLOCRON_DIR/k9s/prod|g" \
+        -e "s|{{K9S_DEV_DIR}}|$HOLOCRON_DIR/k9s/dev|g" \
+        -e "s|{{K9S_RAY_DIR}}|$HOLOCRON_DIR/k9s/ray|g" \
+        -e "s|{{LOGS_DIR}}|$HOLOCRON_DIR/logs|g" \
+        -e "s|{{UTILS_DIR}}|$HOLOCRON_DIR/utils|g" \
         "$template_file" > "$LAYOUT_DIR/hyperpod.kdl"
 
     log_success "Layout saved to $LAYOUT_DIR/hyperpod.kdl"
+}
+
+# ============================================================================
+# Zellij Configuration
+# ============================================================================
+
+configure_zellij_keybindings() {
+    echo ""
+    log_info "Configuring Zellij keybindings..."
+
+    local zellij_config="$HOME/.config/zellij/config.kdl"
+    local analyze_script="$HOLOCRON_DIR/utils/analyze-pane.sh"
+
+    # Create zellij config directory if it doesn't exist
+    mkdir -p "$(dirname "$zellij_config")"
+
+    # Check if config exists
+    if [[ ! -f "$zellij_config" ]]; then
+        log_info "Creating new Zellij config..."
+        cat > "$zellij_config" <<'ZELLIJ_CONFIG'
+keybinds {
+    shared_except "locked" {
+        // Placeholder for Holocron keybindings
+    }
+}
+ZELLIJ_CONFIG
+    fi
+
+    # Check if our keybinding already exists
+    if grep -q "Ctrl Shift A.*analyze-pane" "$zellij_config" 2>/dev/null; then
+        log_info "Analyze keybinding already configured"
+        return
+    fi
+
+    # Add our keybinding to the config
+    log_info "Adding Ctrl+Shift+A analyze keybinding..."
+
+    # Find the shared_except "locked" block and add our binding
+    if grep -q 'shared_except "locked"' "$zellij_config"; then
+        # Insert after the shared_except "locked" line
+        sed -i.bak '/shared_except "locked" {/a\
+        // Holocron: Analyze current pane with Claude\
+        bind "Ctrl Shift A" {\
+            Run "bash" {\
+                args "-c" "'"$analyze_script"'"\
+                close_on_exit true\
+                floating true\
+                width "50%"\
+                height "20%"\
+                x "25%"\
+                y "40%"\
+            }\
+        }\
+
+' "$zellij_config"
+        rm -f "$zellij_config.bak"
+        log_success "Added analyze keybinding to $zellij_config"
+    else
+        # Create the whole keybinds block
+        cat >> "$zellij_config" <<KEYBIND
+
+keybinds {
+    shared_except "locked" {
+        // Holocron: Analyze current pane with Claude
+        bind "Ctrl Shift A" {
+            Run "bash" {
+                args "-c" "$analyze_script"
+                close_on_exit true
+                floating true
+                width "50%"
+                height "20%"
+                x "25%"
+                y "40%"
+            }
+        }
+    }
+}
+KEYBIND
+        log_success "Created keybindings in $zellij_config"
+    fi
 }
 
 # ============================================================================
@@ -560,6 +656,9 @@ main() {
     generate_config
     generate_layout
 
+    # Configure Zellij
+    configure_zellij_keybindings
+
     # Create launcher
     create_launcher
 
@@ -580,6 +679,11 @@ main() {
     echo "Configuration saved to: $CONFIG_FILE"
     echo "Layout saved to: $LAYOUT_DIR/hyperpod.kdl"
     echo "Workspace directory: $HOLOCRON_WORKSPACE"
+    echo ""
+    echo "Analysis Features:"
+    echo -e "  ${BLUE}Press Ctrl+Shift+A in k9s panes to analyze with Claude${NC}"
+    echo "  Results appear in bottom-right Analysis pane"
+    echo "  Analyze script: $HOLOCRON_DIR/utils/analyze-pane.sh"
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 }

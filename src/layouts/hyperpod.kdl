@@ -117,14 +117,15 @@ layout {
                 }
 
                 // ------------------------------------
-                // QUADRANT 4: Cluster Utilities
+                // QUADRANT 4: Cluster Utilities / Analysis Output
                 // Lower Right - 50% width x 20% height
-                // Connected to Q3 via pipes (future)
+                // Monitors analysis output from k9s panes
                 // YELLOW border (Solarized)
                 // ------------------------------------
                 pane size="20%" {
                     command "zsh"
-                    name "Cluster-Metrics"
+                    args "-c" "tail -f /tmp/zellij-analysis-output.txt 2>/dev/null || { echo '🔍 Waiting for analysis... Press Ctrl+Shift+A in k9s panes to analyze'; tail -f /tmp/zellij-analysis-output.txt; }"
+                    name "Analysis"
                     cwd "{{UTILS_DIR}}"
                 }
             }

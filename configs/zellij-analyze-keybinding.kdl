@@ -1,0 +1,36 @@
+// Zellij Analyze Keybinding Configuration
+// Add this to your ~/.config/zellij/config.kdl
+
+keybinds {
+    // Add to shared_except "locked" block
+    shared_except "locked" {
+        // Ctrl+Shift+A: Analyze current pane and send to Cluster-Metrics pane
+        bind "Ctrl Shift A" {
+            Run "bash" {
+                args "-c" "~/path/to/analyze-pane.sh"
+                close_on_exit true
+                floating true
+                width "50%"
+                height "20%"
+                x "25%"
+                y "40%"
+            }
+        }
+
+        // Alt+A: Quick analyze (alternative keybinding)
+        bind "Alt A" {
+            Run "bash" {
+                args "-c" "~/path/to/analyze-pane.sh"
+                close_on_exit true
+                floating true
+                width "50%"
+                height "20%"
+                x "25%"
+                y "40%"
+            }
+        }
+    }
+}
+
+// Note: Replace ~/path/to/analyze-pane.sh with actual path from test-setup.sh
+// For test environment, this will be in the project's src/scripts/ directory

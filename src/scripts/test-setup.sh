@@ -495,8 +495,17 @@ run_test() {
     mkdir -p "$TEST_ROOT/k9s/ray"
     mkdir -p "$TEST_ROOT/logs"
     mkdir -p "$TEST_ROOT/utils"
+    mkdir -p "/tmp/zellij-captures"
+
+    # Initialize analysis output file
+    touch /tmp/zellij-analysis-output.txt
 
     log_success "Test directories created"
+
+    # Copy analyze script to utils directory for easy access
+    log_info "Setting up analysis infrastructure..."
+    cp "$PROJECT_ROOT/src/scripts/analyze-pane.sh" "$TEST_ROOT/utils/"
+    chmod +x "$TEST_ROOT/utils/analyze-pane.sh"
 
     # Create analyze script for k9s panes
     log_info "Creating analyze scripts for k9s panes..."
@@ -526,6 +535,21 @@ run_test() {
     echo ""
     echo "To launch the test workspace:"
     echo -e "  ${GREEN}zellij --layout $TEST_LAYOUT_DIR/hyperpod.kdl${NC}"
+    echo ""
+    echo "To enable the Ctrl+Shift+A analyze hotkey:"
+    echo "  1. Add this to your ~/.config/zellij/config.kdl:"
+    echo ""
+    echo "     shared_except \"locked\" {"
+    echo "         bind \"Ctrl Shift A\" {"
+    echo "             Run \"bash\" {"
+    echo "                 args \"-c\" \"$TEST_ROOT/utils/analyze-pane.sh\""
+    echo "                 close_on_exit true"
+    echo "                 floating true"
+    echo "             }"
+    echo "         }"
+    echo "     }"
+    echo ""
+    echo "  2. Or run manually from k9s panes: $TEST_ROOT/utils/analyze-pane.sh"
     echo ""
     echo "To clean up after testing:"
     echo -e "  ${YELLOW}rm -rf $TEST_ROOT${NC}"
