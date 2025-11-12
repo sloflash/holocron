@@ -19,8 +19,10 @@ layout {
     }
 
     // Pane template for K8s monitoring panes
+    // Note: Execute startup script that sources analyze.sh and launches k9s
     pane_template name="k9s-pane" {
-        command "k9s"
+        command "zsh"
+        args "-c" "source ./analyze.sh; exec k9s"
         close_on_exit false
     }
 
@@ -78,6 +80,7 @@ layout {
                 pane size="20%" {
                     command "zsh"
                     name "OS-Logs"
+                    cwd "{{LOGS_DIR}}"
                 }
             }
 
@@ -98,15 +101,18 @@ layout {
                     k9s-pane {
                         expanded true
                         name "Prod EKS"
-                        args "--context" "{{K8S_CONTEXT_1}}"
+                        cwd "{{K9S_PROD_DIR}}"
+                        args "-c" "source ./analyze.sh 2>/dev/null; exec k9s --context {{K8S_CONTEXT_1}}"
                     }
                     k9s-pane {
                         name "Dev EKS"
-                        args "--context" "{{K8S_CONTEXT_2}}"
+                        cwd "{{K9S_DEV_DIR}}"
+                        args "-c" "source ./analyze.sh 2>/dev/null; exec k9s --context {{K8S_CONTEXT_2}}"
                     }
                     k9s-pane {
                         name "Ray EKS"
-                        args "--context" "{{K8S_CONTEXT_3}}"
+                        cwd "{{K9S_RAY_DIR}}"
+                        args "-c" "source ./analyze.sh 2>/dev/null; exec k9s --context {{K8S_CONTEXT_3}}"
                     }
                 }
 
@@ -119,6 +125,7 @@ layout {
                 pane size="20%" {
                     command "zsh"
                     name "Cluster-Metrics"
+                    cwd "{{UTILS_DIR}}"
                 }
             }
         }

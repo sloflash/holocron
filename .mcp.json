@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "tty-terminal": {
+      "command": "python3",
+      "args": [
+        "/Users/mayankketkar/claude-tools/tmux/.claude/mcp-servers/tty-terminal/server.py"
+      ]
+    }
+  }
+}

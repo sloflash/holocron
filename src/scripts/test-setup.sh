@@ -214,6 +214,11 @@ generate_test_layout() {
         -e "s|{{K8S_CONTEXT_1}}|prod-eks|g" \
         -e "s|{{K8S_CONTEXT_2}}|dev-eks|g" \
         -e "s|{{K8S_CONTEXT_3}}|ray-eks|g" \
+        -e "s|{{K9S_PROD_DIR}}|$TEST_ROOT/k9s/prod|g" \
+        -e "s|{{K9S_DEV_DIR}}|$TEST_ROOT/k9s/dev|g" \
+        -e "s|{{K9S_RAY_DIR}}|$TEST_ROOT/k9s/ray|g" \
+        -e "s|{{LOGS_DIR}}|$TEST_ROOT/logs|g" \
+        -e "s|{{UTILS_DIR}}|$TEST_ROOT/utils|g" \
         "$template_file" > "$TEST_LAYOUT_DIR/hyperpod.kdl"
 
     # Create a k9s wrapper script that provides helpful error messages
@@ -374,6 +379,95 @@ check_dependencies() {
 }
 
 # ============================================================================
+# Analyze Script Creation
+# ============================================================================
+
+create_analyze_script() {
+    local pane_dir="$1"
+    local cluster_name="$2"
+
+    cat > "$pane_dir/analyze.sh" <<'ANALYZE_SCRIPT'
+#!/usr/bin/env zsh
+# K9s Analyze Script - Capture and analyze Kubernetes logs with Claude
+
+analyze() {
+    local CLUSTER="${1:-current}"
+    local TMPFILE="${ZELLIJ_SESSION_NAME:+/tmp/zellij-${ZELLIJ_SESSION_NAME}}-analyze-${CLUSTER}.txt"
+
+    # Fallback if not in Zellij
+    if [[ -z "$TMPFILE" ]]; then
+        TMPFILE="/tmp/zellij-analyze-${CLUSTER}-$$.txt"
+    fi
+
+    echo "🔍 Capturing pane content for ${CLUSTER}..."
+
+    # Ensure clean slate
+    rm -f "$TMPFILE"
+
+    # Dump current pane screen content
+    if command -v zellij &> /dev/null; then
+        zellij action dump-screen "$TMPFILE"
+    else
+        echo "❌ Zellij not found or not in a Zellij session"
+        return 1
+    fi
+
+    # Verify file was created and has content
+    if [[ ! -s "$TMPFILE" ]]; then
+        echo "❌ Failed to capture pane content"
+        return 1
+    fi
+
+    local line_count=$(wc -l < "$TMPFILE")
+    echo "✅ Captured ${line_count} lines from ${CLUSTER}"
+
+    # Check if claude command exists
+    if ! command -v claude &> /dev/null; then
+        echo "❌ 'claude' command not found. Please install Claude CLI."
+        echo "📁 Content saved to: $TMPFILE"
+        echo "   You can manually review or pipe to another tool."
+        return 1
+    fi
+
+    # Analyze with Claude
+    echo "🤖 Analyzing with Claude..."
+    claude "Analyze these K8s logs from ${CLUSTER} cluster. Look for errors, warnings, resource issues, or anomalies:" < "$TMPFILE"
+
+    # Keep the file for manual inspection
+    echo ""
+    echo "📁 Raw content saved to: $TMPFILE"
+}
+
+# Make analyze function available
+export -f analyze 2>/dev/null || true
+
+# Show help on load
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "K9s Analyze Script Loaded"
+echo ""
+echo "Usage:"
+echo "  analyze [cluster-name]"
+echo ""
+echo "Example:"
+echo "  analyze prod-eks"
+echo ""
+echo "This will:"
+echo "  1. Capture current k9s pane content"
+echo "  2. Send to Claude for analysis"
+echo "  3. Save raw output to /tmp for inspection"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+ANALYZE_SCRIPT
+
+    chmod +x "$pane_dir/analyze.sh"
+
+    # Replace CLUSTER placeholder with actual cluster name
+    sed -i.bak "s/current/${cluster_name}/g" "$pane_dir/analyze.sh"
+    rm -f "$pane_dir/analyze.sh.bak"
+
+    log_success "Created analyze script in $pane_dir"
+}
+
+# ============================================================================
 # Main Test Flow
 # ============================================================================
 
@@ -394,7 +488,22 @@ run_test() {
     mkdir -p "$TEST_HOLOCRON_DIR"
     mkdir -p "$TEST_WORKSPACE"
     mkdir -p "$TEST_CONFIG_DIR"
+
+    # Create working directories for each pane
+    mkdir -p "$TEST_ROOT/k9s/prod"
+    mkdir -p "$TEST_ROOT/k9s/dev"
+    mkdir -p "$TEST_ROOT/k9s/ray"
+    mkdir -p "$TEST_ROOT/logs"
+    mkdir -p "$TEST_ROOT/utils"
+
     log_success "Test directories created"
+
+    # Create analyze script for k9s panes
+    log_info "Creating analyze scripts for k9s panes..."
+    create_analyze_script "$TEST_ROOT/k9s/prod" "prod-eks"
+    # TODO: Uncomment for dev and ray when ready to test
+    # create_analyze_script "$TEST_ROOT/k9s/dev" "dev-eks"
+    # create_analyze_script "$TEST_ROOT/k9s/ray" "ray-eks"
 
     # Create test repos
     create_test_repos
