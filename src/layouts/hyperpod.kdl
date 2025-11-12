@@ -124,14 +124,15 @@ layout {
                 }
 
                 // ------------------------------------
-                // QUADRANT 4: Cluster Utilities
+                // QUADRANT 4: Dump Viewer
                 // Lower Right - 50% width x 20% height
-                // General purpose shell
+                // Watches /tmp/k9s-dump-latest.txt for changes
                 // YELLOW border (Solarized)
                 // ------------------------------------
                 pane size="20%" {
-                    command "zsh"
-                    name "Utils"
+                    command "bash"
+                    args "-c" "tail -f /tmp/k9s-dump-latest.txt 2>/dev/null || (echo 'Waiting for dumps... Press Alt+a in any pane to dump content'; sleep infinity)"
+                    name "Dump Viewer"
                     cwd "{{UTILS_DIR}}"
                 }
             }
