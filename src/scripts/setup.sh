@@ -90,49 +90,131 @@ check_dependency() {
     fi
 }
 
+install_with_brew() {
+    local package=$1
+    log_info "Installing $package via Homebrew..."
+    if ! command -v brew &> /dev/null; then
+        log_error "Homebrew not found!"
+        echo "Install Homebrew first: /bin/bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\""
+        return 1
+    fi
+    brew install "$package"
+}
+
+install_with_apt() {
+    local package=$1
+    log_info "Installing $package via apt..."
+    sudo apt-get update -qq
+    sudo apt-get install -y "$package"
+}
+
+install_zellij_linux() {
+    log_info "Installing Zellij from GitHub releases..."
+    local temp_dir=$(mktemp -d)
+    cd "$temp_dir" || return 1
+
+    # Detect architecture
+    local arch=$(uname -m)
+    local zellij_url
+
+    if [[ "$arch" == "x86_64" ]]; then
+        zellij_url="https://github.com/zellij-org/zellij/releases/latest/download/zellij-x86_64-unknown-linux-musl.tar.gz"
+    elif [[ "$arch" == "aarch64" ]] || [[ "$arch" == "arm64" ]]; then
+        zellij_url="https://github.com/zellij-org/zellij/releases/latest/download/zellij-aarch64-unknown-linux-musl.tar.gz"
+    else
+        log_error "Unsupported architecture: $arch"
+        return 1
+    fi
+
+    if ! curl -L "$zellij_url" | tar -xzf -; then
+        log_error "Failed to download Zellij"
+        return 1
+    fi
+
+    sudo install -m 755 zellij /usr/local/bin/zellij
+    cd - > /dev/null
+    rm -rf "$temp_dir"
+    log_success "Zellij installed to /usr/local/bin/zellij"
+}
+
+install_kubectl_linux() {
+    log_info "Installing kubectl from official releases..."
+    local stable_version=$(curl -L -s https://dl.k8s.io/release/stable.txt)
+    local arch=$(uname -m)
+
+    if [[ "$arch" == "x86_64" ]]; then
+        arch="amd64"
+    elif [[ "$arch" == "aarch64" ]] || [[ "$arch" == "arm64" ]]; then
+        arch="arm64"
+    fi
+
+    curl -LO "https://dl.k8s.io/release/${stable_version}/bin/linux/${arch}/kubectl"
+    chmod +x kubectl
+    sudo mv kubectl /usr/local/bin/kubectl
+    log_success "kubectl installed to /usr/local/bin/kubectl"
+}
+
+install_k9s_linux() {
+    log_info "Installing k9s from GitHub releases..."
+    local temp_dir=$(mktemp -d)
+    cd "$temp_dir" || return 1
+
+    local arch=$(uname -m)
+    if [[ "$arch" == "x86_64" ]]; then
+        arch="amd64"
+    elif [[ "$arch" == "aarch64" ]] || [[ "$arch" == "arm64" ]]; then
+        arch="arm64"
+    fi
+
+    local k9s_url="https://github.com/derailed/k9s/releases/latest/download/k9s_Linux_${arch}.tar.gz"
+
+    if ! curl -L "$k9s_url" | tar -xzf -; then
+        log_error "Failed to download k9s"
+        return 1
+    fi
+
+    sudo install -m 755 k9s /usr/local/bin/k9s
+    cd - > /dev/null
+    rm -rf "$temp_dir"
+    log_success "k9s installed to /usr/local/bin/k9s"
+}
+
 install_dependencies() {
     local os=$(detect_os)
-    log_info "Detected OS: $os"
+    log_info "Detected OS: $os ($(uname -m))"
     echo ""
 
     log_info "Checking required dependencies..."
+    echo ""
 
-    # Check Zellij
+    # Check and install Zellij
     if ! check_dependency "zellij"; then
-        log_info "Installing Zellij..."
         case $os in
             macos)
-                if command -v brew &> /dev/null; then
-                    brew install zellij
-                else
-                    log_error "Homebrew not found. Please install Homebrew first: https://brew.sh"
-                    exit 1
-                fi
+                install_with_brew zellij || exit 1
                 ;;
-            ubuntu)
-                log_info "Installing Zellij from GitHub releases..."
-                wget -qO- https://github.com/zellij-org/zellij/releases/latest/download/zellij-x86_64-unknown-linux-musl.tar.gz | tar -xzf - -C /tmp
-                sudo mv /tmp/zellij /usr/local/bin/
+            ubuntu|linux)
+                install_zellij_linux || exit 1
                 ;;
             *)
-                log_error "Automatic installation not supported for $os. Please install Zellij manually: https://zellij.dev/documentation/installation"
+                log_error "Unsupported OS: $os"
+                echo "Please install Zellij manually: https://zellij.dev/documentation/installation"
                 exit 1
                 ;;
         esac
     fi
 
-    # Check Git
+    # Check and install Git
     if ! check_dependency "git"; then
-        log_info "Installing Git..."
         case $os in
             macos)
-                brew install git
+                install_with_brew git || exit 1
                 ;;
-            ubuntu)
-                sudo apt-get update && sudo apt-get install -y git
+            ubuntu|linux)
+                install_with_apt git || exit 1
                 ;;
             *)
-                log_error "Automatic installation not supported for $os. Please install Git manually."
+                log_error "Unsupported OS: $os"
                 exit 1
                 ;;
         esac
@@ -140,43 +222,41 @@ install_dependencies() {
 
     echo ""
     log_info "Checking optional dependencies..."
+    echo ""
 
-    # Check kubectl
+    # Check and install kubectl
     if ! check_dependency "kubectl"; then
         prompt "kubectl not found. Install it? (y/n): "
         read -r install_kubectl
         if [[ "$install_kubectl" == "y" ]]; then
             case $os in
                 macos)
-                    brew install kubectl
+                    install_with_brew kubectl
                     ;;
-                ubuntu)
-                    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-                    sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-                    rm kubectl
+                ubuntu|linux)
+                    install_kubectl_linux
                     ;;
                 *)
-                    log_warn "Automatic installation not supported. Please install kubectl manually: https://kubernetes.io/docs/tasks/tools/"
+                    log_warn "Please install kubectl manually: https://kubernetes.io/docs/tasks/tools/"
                     ;;
             esac
         fi
     fi
 
-    # Check k9s
+    # Check and install k9s
     if ! check_dependency "k9s"; then
         prompt "k9s not found. Install it? (y/n): "
         read -r install_k9s
         if [[ "$install_k9s" == "y" ]]; then
             case $os in
                 macos)
-                    brew install k9s
+                    install_with_brew k9s
                     ;;
-                ubuntu)
-                    wget -qO- https://github.com/derailed/k9s/releases/latest/download/k9s_Linux_amd64.tar.gz | tar -xzf - -C /tmp
-                    sudo mv /tmp/k9s /usr/local/bin/
+                ubuntu|linux)
+                    install_k9s_linux
                     ;;
                 *)
-                    log_warn "Automatic installation not supported. Please install k9s manually: https://k9scli.io/topics/install/"
+                    log_warn "Please install k9s manually: https://k9scli.io/topics/install/"
                     ;;
             esac
         fi

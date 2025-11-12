@@ -223,16 +223,67 @@ generate_test_layout() {
 # Dependency Check
 # ============================================================================
 
+install_zellij() {
+    log_info "Attempting to install Zellij..."
+
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        if command -v brew &> /dev/null; then
+            brew install zellij
+            return 0
+        else
+            log_error "Homebrew not found. Please install Homebrew first or install Zellij manually."
+            return 1
+        fi
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Use the same install function from setup.sh
+        local temp_dir=$(mktemp -d)
+        cd "$temp_dir" || return 1
+
+        local arch=$(uname -m)
+        local zellij_url
+
+        if [[ "$arch" == "x86_64" ]]; then
+            zellij_url="https://github.com/zellij-org/zellij/releases/latest/download/zellij-x86_64-unknown-linux-musl.tar.gz"
+        elif [[ "$arch" == "aarch64" ]] || [[ "$arch" == "arm64" ]]; then
+            zellij_url="https://github.com/derailed/k9s/releases/latest/download/zellij-aarch64-unknown-linux-musl.tar.gz"
+        else
+            log_error "Unsupported architecture: $arch"
+            return 1
+        fi
+
+        if ! curl -L "$zellij_url" | tar -xzf -; then
+            log_error "Failed to download Zellij"
+            return 1
+        fi
+
+        sudo install -m 755 zellij /usr/local/bin/zellij
+        cd - > /dev/null
+        rm -rf "$temp_dir"
+        return 0
+    else
+        log_error "Unsupported OS. Please install Zellij manually."
+        return 1
+    fi
+}
+
 check_dependencies() {
     log_info "Checking dependencies..."
 
+    # Check and install Zellij automatically for test mode
     if ! command -v zellij &> /dev/null; then
-        log_error "Zellij is not installed!"
-        echo "Please install Zellij first: https://zellij.dev/documentation/installation"
-        exit 1
-    fi
+        log_warn "Zellij is not installed!"
+        log_info "Installing Zellij for testing..."
 
-    log_success "Zellij found: $(command -v zellij)"
+        if install_zellij; then
+            log_success "Zellij installed successfully"
+        else
+            log_error "Failed to install Zellij"
+            log_info "Please install Zellij manually and re-run: https://zellij.dev/documentation/installation"
+            exit 1
+        fi
+    else
+        log_success "Zellij found: $(command -v zellij)"
+    fi
 
     if ! command -v git &> /dev/null; then
         log_error "Git is not installed!"
@@ -349,7 +400,9 @@ main() {
     esac
 }
 
-# Trap cleanup on exit if interrupted
-trap cleanup EXIT INT TERM
+# Trap cleanup on exit unless NO_CLEANUP is set
+if [[ "${NO_CLEANUP:-false}" != "true" ]]; then
+    trap cleanup EXIT INT TERM
+fi
 
 main "$@"

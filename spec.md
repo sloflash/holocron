@@ -265,8 +265,8 @@ After installation, the following directories are created:
 - [x] Automated testing script
 - [x] Cross-platform support (macOS, Linux)
 - [x] Documentation (README, spec)
-- [ ] Minikube test contexts
-- [ ] Package for distribution
+- [x] Minikube test contexts
+- [ ] Package for distribution (Future)
 
 ### Phase 5: Testing & Refinement (In Progress)
 - [x] Automated test setup without user input
