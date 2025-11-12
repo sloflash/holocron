@@ -1,6 +1,9 @@
 use zellij_tile::prelude::*;
 use std::collections::BTreeMap;
 
+// Zellij 0.43+ moved Key to generated API
+use zellij_tile::prelude::Key;
+
 #[derive(Default)]
 struct State {
     // Pane tracking
