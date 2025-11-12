@@ -24,12 +24,30 @@ class MCPServer:
         method = request.get("method")
         params = request.get("params", {})
 
-        if method == "tools/list":
+        if method == "initialize":
+            return self.initialize(params)
+        elif method == "initialized":
+            # This is a notification, no response needed
+            return None
+        elif method == "tools/list":
             return self.list_tools()
         elif method == "tools/call":
             return await self.call_tool(params)
         else:
             return {"error": {"code": -32601, "message": f"Method not found: {method}"}}
+
+    def initialize(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle MCP initialize request"""
+        return {
+            "protocolVersion": "2024-11-05",
+            "capabilities": {
+                "tools": {}
+            },
+            "serverInfo": {
+                "name": "tty-terminal",
+                "version": "1.0.0"
+            }
+        }
 
     def list_tools(self) -> Dict[str, Any]:
         """List available tools"""
@@ -369,17 +387,20 @@ class MCPServer:
 
                 request = json.loads(line.decode())
                 response = await self.handle_request(request)
-                response["jsonrpc"] = "2.0"
-                response["id"] = request.get("id")
 
-                # Write response
-                writer.write((json.dumps(response) + "\n").encode())
-                await writer.drain()
+                # Only send response if we got one (notifications don't get responses)
+                if response is not None:
+                    response["jsonrpc"] = "2.0"
+                    response["id"] = request.get("id")
+
+                    # Write response
+                    writer.write((json.dumps(response) + "\n").encode())
+                    await writer.drain()
 
             except Exception as e:
                 error_response = {
                     "jsonrpc": "2.0",
-                    "id": None,
+                    "id": request.get("id") if 'request' in locals() else None,
                     "error": {
                         "code": -32603,
                         "message": f"Internal error: {str(e)}"

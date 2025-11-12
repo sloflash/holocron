@@ -416,11 +416,13 @@ run_test() {
     echo "  Config:     $TEST_CONFIG_DIR/config.yaml"
     echo ""
     echo "To launch the test workspace:"
-    echo -e "  ${GREEN}zellij --layout $TEST_LAYOUT_DIR/hyperpod.kdl --session holocron-test${NC}"
+    echo -e "  ${GREEN}zellij --layout $TEST_LAYOUT_DIR/hyperpod.kdl${NC}"
     echo ""
     echo "To clean up after testing:"
     echo -e "  ${YELLOW}rm -rf $TEST_ROOT${NC}"
-    echo "  ${YELLOW}zellij delete-session holocron-test${NC}"
+    echo "  ${YELLOW}# Exit zellij with Ctrl+q or detach, then kill session with:${NC}"
+    echo "  ${YELLOW}# zellij list-sessions  # to find session name${NC}"
+    echo "  ${YELLOW}# zellij delete-session <session-name>${NC}"
     echo ""
     echo "Or use the cleanup script:"
     echo -e "  ${YELLOW}./src/scripts/test-cleanup.sh${NC}"
@@ -441,7 +443,7 @@ interactive_mode() {
     if [[ "$launch" == "y" ]]; then
         log_info "Launching test workspace..."
         echo ""
-        zellij --layout "$TEST_LAYOUT_DIR/hyperpod.kdl" --session holocron-test
+        zellij --layout "$TEST_LAYOUT_DIR/hyperpod.kdl"
     fi
 
     echo ""
@@ -472,7 +474,7 @@ main() {
                 log_error "Test environment not set up. Run './src/scripts/test-setup.sh setup' first"
                 exit 1
             fi
-            zellij --layout "$TEST_LAYOUT_DIR/hyperpod.kdl" --session holocron-test
+            zellij --layout "$TEST_LAYOUT_DIR/hyperpod.kdl"
             ;;
         interactive|*)
             interactive_mode

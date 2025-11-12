@@ -147,12 +147,10 @@ Run the test setup script which uses the existing minikube clusters:
 NO_CLEANUP=true ./src/scripts/test-setup.sh setup
 ```
 
-Then launch Zellij with the generated layout and config:
+Then launch Zellij with the generated layout:
 ```bash
 # Get the layout path from test-setup.sh output
-zellij --layout /tmp/holocron-test-XXXXX/.config/holocron/layouts/hyperpod.kdl \
-       --config configs/zellij-config.kdl \
-       --session holocron-test
+zellij --layout /tmp/holocron-test-XXXXX/.config/holocron/layouts/hyperpod.kdl
 ```
 
 ### Option 2: Install Globally

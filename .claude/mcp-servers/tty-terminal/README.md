@@ -27,6 +27,7 @@ Add to your Claude Code MCP configuration file (`~/.claude/mcp.json` or project-
 {
   "mcpServers": {
     "tty-terminal": {
+      "type": "stdio",
       "command": "python3",
       "args": [
         "/Users/mayankketkar/claude-tools/tmux/.claude/mcp-servers/tty-terminal/server.py"
