@@ -168,18 +168,18 @@ repositories:
     path: "$TEST_WORKSPACE/repo3"
 
 kubernetes:
-  enabled: false
+  enabled: true
   context1:
-    name: "Test Prod"
-    context: "minikube"
+    name: "Prod EKS"
+    context: "prod-eks"
 
   context2:
-    name: "Test Dev"
-    context: "minikube"
+    name: "Dev EKS"
+    context: "dev-eks"
 
   context3:
-    name: "Test Ray"
-    context: "minikube"
+    name: "Ray EKS"
+    context: "ray-eks"
 
 workspace:
   name: "Hyperpod-Test"
@@ -206,15 +206,53 @@ generate_test_layout() {
     fi
 
     # Replace template variables
+    # Note: Uses existing minikube profiles (prod-eks, dev-eks, ray-eks)
     sed -e "s|{{HOLOCRON_WORKSPACE}}|$TEST_WORKSPACE|g" \
         -e "s|{{REPO_1_NAME}}|Driving (TEST)|g" \
         -e "s|{{REPO_2_NAME}}|K8s (TEST)|g" \
         -e "s|{{REPO_3_NAME}}|Deploy (TEST)|g" \
-        -e "s|{{K8S_CONTEXT_1}}|minikube|g" \
-        -e "s|{{K8S_CONTEXT_2}}|minikube|g" \
-        -e "s|{{K8S_CONTEXT_3}}|minikube|g" \
-        -e 's|command "k9s"|command "bash"|g' \
+        -e "s|{{K8S_CONTEXT_1}}|prod-eks|g" \
+        -e "s|{{K8S_CONTEXT_2}}|dev-eks|g" \
+        -e "s|{{K8S_CONTEXT_3}}|ray-eks|g" \
         "$template_file" > "$TEST_LAYOUT_DIR/hyperpod.kdl"
+
+    # Create a k9s wrapper script that provides helpful error messages
+    cat > "$TEST_CONFIG_DIR/k9s-wrapper.sh" <<'WRAPPER'
+#!/usr/bin/env bash
+# K9s wrapper for Holocron testing
+
+if ! command -v k9s &> /dev/null; then
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "K9s is not installed!"
+    echo ""
+    echo "To install k9s:"
+    echo "  macOS:   brew install derailed/k9s/k9s"
+    echo "  Linux:   Check https://k9scli.io/topics/install/"
+    echo ""
+    echo "Starting zsh instead..."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    exec zsh
+fi
+
+# Check if minikube is running
+if command -v minikube &> /dev/null; then
+    if ! minikube status &> /dev/null; then
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "Minikube is not running!"
+        echo ""
+        echo "Start minikube with:"
+        echo "  minikube start"
+        echo ""
+        echo "Starting zsh instead..."
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        exec zsh
+    fi
+fi
+
+# Run k9s with provided arguments
+exec k9s "$@"
+WRAPPER
+    chmod +x "$TEST_CONFIG_DIR/k9s-wrapper.sh"
 
     log_success "Layout generated"
 }
@@ -291,6 +329,48 @@ check_dependencies() {
     fi
 
     log_success "Git found: $(command -v git)"
+
+    # Check k9s
+    if ! command -v k9s &> /dev/null; then
+        log_warn "k9s is not installed (optional)"
+        log_info "Install with: brew install derailed/k9s/k9s"
+    else
+        log_success "k9s found: $(command -v k9s)"
+    fi
+
+    # Check kubectl
+    if ! command -v kubectl &> /dev/null; then
+        log_warn "kubectl is not installed (optional)"
+        log_info "Install with: brew install kubectl"
+    else
+        log_success "kubectl found: $(command -v kubectl)"
+    fi
+
+    # Check for existing minikube clusters
+    if command -v minikube &> /dev/null; then
+        log_info "Checking for existing minikube clusters..."
+
+        local clusters_found=0
+        for profile in prod-eks dev-eks ray-eks; do
+            if minikube profile list 2>/dev/null | grep -q "$profile"; then
+                log_success "Found minikube profile: $profile"
+                ((clusters_found++))
+            fi
+        done
+
+        if [[ $clusters_found -eq 0 ]]; then
+            log_warn "No minikube clusters found (prod-eks, dev-eks, ray-eks)"
+            log_info "Create them with:"
+            log_info "  minikube start -p prod-eks --driver=docker --cpus=2 --memory=2048"
+            log_info "  minikube start -p dev-eks --driver=docker --cpus=2 --memory=2048"
+            log_info "  minikube start -p ray-eks --driver=docker --cpus=2 --memory=2048"
+        else
+            log_success "Found $clusters_found minikube cluster(s)"
+        fi
+    else
+        log_warn "minikube is not installed (optional for K8s testing)"
+        log_info "Install with: brew install minikube"
+    fi
 }
 
 # ============================================================================

@@ -14,7 +14,7 @@
 layout {
     // Pane template for repository panes
     pane_template name="repo-pane" {
-        command "bash"
+        command "zsh"
         close_on_exit false
     }
 
@@ -48,6 +48,7 @@ layout {
                 // QUADRANT 1: Development Repositories
                 // Upper Left - 50% width x 80% height
                 // Stacked panes for 3 repos
+                // GREEN border (Solarized)
                 // ------------------------------------
                 pane size="80%" {
                     stacked true
@@ -72,9 +73,11 @@ layout {
                 // QUADRANT 2: Future Expansion
                 // Lower Left - 50% width x 20% height
                 // Placeholder pane
+                // PINK/MAGENTA border (Solarized)
                 // ------------------------------------
                 pane size="20%" {
-                    name "Q2-Logs"
+                    command "zsh"
+                    name "OS-Logs"
                 }
             }
 
@@ -87,6 +90,7 @@ layout {
                 // QUADRANT 3: Kubernetes Monitoring
                 // Upper Right - 50% width x 80% height
                 // Stacked k9s panes for clusters
+                // ORANGE border (Solarized)
                 // ------------------------------------
                 pane size="80%" {
                     stacked true
@@ -110,9 +114,11 @@ layout {
                 // QUADRANT 4: Cluster Utilities
                 // Lower Right - 50% width x 20% height
                 // Connected to Q3 via pipes (future)
+                // YELLOW border (Solarized)
                 // ------------------------------------
                 pane size="20%" {
-                    name "Cluster-Utils"
+                    command "zsh"
+                    name "Cluster-Metrics"
                 }
             }
         }
