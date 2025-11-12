@@ -13,9 +13,18 @@
 
 keybinds {
     shared_except "locked" {
-        // Dump current pane to fixed file location
+        // Dump current pane with full scrollback
         bind "Alt a" {
-            DumpScreen "/tmp/k9s-dump-latest.txt";
+            Run "bash" "-c" "zellij action dump-screen --full /tmp/k9s-dump-latest.txt" {
+                close_on_exit true
+            }
+        }
+        // Analyze latest dump in floating pane
+        bind "Alt s" {
+            Run "{{UTILS_DIR}}/analyze-on-demand.sh" {
+                floating true
+                close_on_exit true
+            }
         }
     }
 }
@@ -124,14 +133,13 @@ layout {
                 }
 
                 // ------------------------------------
-                // QUADRANT 4: AI Analyzer
+                // QUADRANT 4: Analyzer
                 // Lower Right - 50% width x 20% height
-                // Watches dumps and analyzes with Claude
+                // Press Alt+s to analyze latest dump
                 // YELLOW border (Solarized)
                 // ------------------------------------
                 pane size="20%" {
-                    command "bash"
-                    args "{{UTILS_DIR}}/watch-and-analyze.sh" "{{ANALYSIS_DIR}}"
+                    command "zsh"
                     name "Analyzer"
                     cwd "{{ANALYSIS_DIR}}"
                 }

@@ -351,8 +351,8 @@ clone_repositories() {
     mkdir -p "$HOLOCRON_DIR"/{k9s/{prod,dev,ray},logs,utils,analysis}
 
     # Copy analyzer script
-    cp "$PROJECT_ROOT/src/scripts/watch-and-analyze.sh" "$HOLOCRON_DIR/utils/"
-    chmod +x "$HOLOCRON_DIR/utils/watch-and-analyze.sh"
+    cp "$PROJECT_ROOT/src/scripts/analyze-on-demand.sh" "$HOLOCRON_DIR/utils/"
+    chmod +x "$HOLOCRON_DIR/utils/analyze-on-demand.sh"
 
     log_success "Created workspace at $HOLOCRON_WORKSPACE"
 

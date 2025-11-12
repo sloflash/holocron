@@ -422,8 +422,8 @@ run_test() {
     mkdir -p "$TEST_ROOT/analysis"
 
     # Copy analyzer script
-    cp "$PROJECT_ROOT/src/scripts/watch-and-analyze.sh" "$TEST_ROOT/utils/"
-    chmod +x "$TEST_ROOT/utils/watch-and-analyze.sh"
+    cp "$PROJECT_ROOT/src/scripts/analyze-on-demand.sh" "$TEST_ROOT/utils/"
+    chmod +x "$TEST_ROOT/utils/analyze-on-demand.sh"
 
     log_success "Test directories created"
 
