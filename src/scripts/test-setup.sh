@@ -318,6 +318,64 @@ install_zellij() {
     fi
 }
 
+check_rust() {
+    if command -v cargo &> /dev/null && command -v rustc &> /dev/null; then
+        log_success "Rust found: cargo $(cargo --version | cut -d' ' -f2)"
+        return 0
+    else
+        return 1
+    fi
+}
+
+install_rust() {
+    log_info "Installing Rust toolchain..."
+
+    if ! curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; then
+        log_error "Failed to install Rust"
+        return 1
+    fi
+
+    # Source cargo environment
+    source "$HOME/.cargo/env"
+
+    log_success "Rust installed successfully"
+}
+
+setup_wasm_target() {
+    log_info "Adding wasm32-wasi target..."
+
+    if ! rustup target list | grep -q "wasm32-wasi (installed)"; then
+        if ! rustup target add wasm32-wasi; then
+            log_error "Failed to add wasm32-wasi target"
+            return 1
+        fi
+        log_success "wasm32-wasi target added"
+    else
+        log_success "wasm32-wasi target already installed"
+    fi
+}
+
+build_plugins() {
+    log_info "Building Zellij plugins..."
+
+    local plugin_dir="$PROJECT_ROOT/src/plugins"
+
+    if [[ ! -f "$plugin_dir/build.sh" ]]; then
+        log_error "Plugin build script not found at $plugin_dir/build.sh"
+        return 1
+    fi
+
+    # Run the plugin build script
+    cd "$plugin_dir" || return 1
+    if ! bash build.sh; then
+        log_error "Plugin build failed"
+        return 1
+    fi
+    cd - > /dev/null
+
+    log_success "Plugins built and installed successfully"
+}
+
 check_dependencies() {
     log_info "Checking dependencies..."
 
@@ -343,6 +401,26 @@ check_dependencies() {
     fi
 
     log_success "Git found: $(command -v git)"
+
+    # Check Rust and build plugins
+    if ! check_rust; then
+        log_warn "Rust is not installed!"
+        log_info "Installing Rust for plugin building..."
+
+        if install_rust; then
+            log_success "Rust installed successfully"
+        else
+            log_error "Failed to install Rust"
+            log_warn "Skipping plugin build - install Rust manually later"
+            return 0
+        fi
+    fi
+
+    # Ensure wasm32-wasi target is installed
+    setup_wasm_target || log_warn "Failed to setup WASM target"
+
+    # Build plugins
+    build_plugins || log_warn "Failed to build plugins"
 
     # Check k9s
     if ! command -v k9s &> /dev/null; then
