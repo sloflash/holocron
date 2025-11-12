@@ -13,20 +13,20 @@ echo ""
 # Ensure output directory exists
 mkdir -p "$OUTPUT_DIR"
 
-# Check for wasm32-wasi target
-if ! rustup target list | grep -q "wasm32-wasi (installed)"; then
-    echo "📦 Installing wasm32-wasi target..."
-    rustup target add wasm32-wasi
+# Check for wasm32-wasip1 target
+if ! rustup target list | grep -q "wasm32-wasip1 (installed)"; then
+    echo "📦 Installing wasm32-wasip1 target..."
+    rustup target add wasm32-wasip1
 fi
 
 # Build k8s-analyzer
 echo "Building k8s-analyzer..."
 cd "$PLUGIN_DIR/k8s-analyzer"
-cargo build --release --target wasm32-wasi
+cargo build --release --target wasm32-wasip1
 
 if [ $? -eq 0 ]; then
     echo "✅ k8s-analyzer built successfully"
-    cp target/wasm32-wasi/release/k8s_analyzer.wasm "$OUTPUT_DIR/"
+    cp target/wasm32-wasip1/release/k8s_analyzer.wasm "$OUTPUT_DIR/"
     echo "📦 Installed to: $OUTPUT_DIR/k8s_analyzer.wasm"
 else
     echo "❌ k8s-analyzer build failed"

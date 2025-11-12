@@ -10,14 +10,14 @@ source ~/.cargo/env
 
 ### 2. Add WASM target
 ```bash
-rustup target add wasm32-wasi
+rustup target add wasm32-wasip1
 ```
 
 ### 3. Verify installation
 ```bash
 cargo --version
 rustc --version
-rustup target list | grep wasm32-wasi
+rustup target list | grep wasm32-wasip1
 ```
 
 ## Building Plugins
@@ -36,11 +36,11 @@ This will:
 ### Manual Build (Single Plugin)
 ```bash
 cd src/plugins/k8s-analyzer
-cargo build --release --target wasm32-wasi
+cargo build --release --target wasm32-wasip1
 
 # Install manually
 mkdir -p ~/.config/zellij/plugins
-cp target/wasm32-wasi/release/k8s_analyzer.wasm ~/.config/zellij/plugins/
+cp target/wasm32-wasip1/release/k8s_analyzer.wasm ~/.config/zellij/plugins/
 ```
 
 ## Troubleshooting
@@ -50,16 +50,18 @@ cp target/wasm32-wasi/release/k8s_analyzer.wasm ~/.config/zellij/plugins/
 - Restart your shell after installation
 - Run: `source ~/.cargo/env`
 
-### "target 'wasm32-wasi' not found"
+### "target 'wasm32-wasi' not found" or "target 'wasm32-wasip1' not found"
 ```bash
-rustup target add wasm32-wasi
+rustup target add wasm32-wasip1
 ```
+
+Note: Older Rust versions used `wasm32-wasi`. Modern versions use `wasm32-wasip1`.
 
 ### Build errors
 ```bash
 # Clean and rebuild
 cargo clean
-cargo build --release --target wasm32-wasi
+cargo build --release --target wasm32-wasip1
 ```
 
 ### Plugin not loading
@@ -71,24 +73,24 @@ cargo build --release --target wasm32-wasi
 
 ### Watch mode (auto-rebuild on changes)
 ```bash
-cargo watch -x 'build --release --target wasm32-wasi'
+cargo watch -x 'build --release --target wasm32-wasip1'
 ```
 
 ### Testing
 ```bash
 # Syntax check only (fast)
-cargo check --target wasm32-wasi
+cargo check --target wasm32-wasip1
 
 # Full build with warnings
-cargo build --target wasm32-wasi --all-features
+cargo build --target wasm32-wasip1 --all-features
 
 # Release build
-cargo build --release --target wasm32-wasi
+cargo build --release --target wasm32-wasip1
 ```
 
 ## Plugin Locations
 
 - **Source**: `src/plugins/k8s-analyzer/`
-- **Binary**: `src/plugins/k8s-analyzer/target/wasm32-wasi/release/k8s_analyzer.wasm`
+- **Binary**: `src/plugins/k8s-analyzer/target/wasm32-wasip1/release/k8s_analyzer.wasm`
 - **Installed**: `~/.config/zellij/plugins/k8s_analyzer.wasm`
 - **Layout reference**: `file:~/.config/zellij/plugins/k8s_analyzer.wasm`

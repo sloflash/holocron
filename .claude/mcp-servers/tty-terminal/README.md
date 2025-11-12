@@ -1,13 +1,15 @@
 # TTY Terminal MCP Server
 
-MCP (Model Context Protocol) server that provides TTY terminal access to Claude Code, enabling execution of interactive commands like Zellij, tmux, and other TUI applications.
+Advanced MCP (Model Context Protocol) server that provides comprehensive TTY terminal control and Zellij testing capabilities. This server enables Claude Code to open persistent terminal sessions, execute commands, manage Zellij layouts, and verify state changes.
 
 ## Features
 
-- **Real TTY terminals**: Creates actual pseudo-terminals (PTY) for full interactivity
-- **Multiple sessions**: Manage multiple terminal sessions simultaneously
-- **Command execution**: Run commands and capture output
-- **Session persistence**: Keep terminals alive between commands
+- **Persistent Terminal Handles**: Open terminals and maintain references for repeated operations
+- **macOS Terminal.app Integration**: Control Terminal.app via osascript (AppleScript)
+- **Zellij Session Management**: Start, control, and monitor Zellij sessions
+- **Command Execution**: Send commands to specific terminals
+- **State Capture & Verification**: Dump layouts, parse KDL, and verify pane configurations
+- **Multi-Session Support**: Manage multiple terminal and Zellij sessions simultaneously
 
 ## Installation
 
@@ -53,161 +55,409 @@ For the MCP server to be loaded, restart Claude Code or reload the window.
 
 ## Available Tools
 
-### `tty_open`
-Open a new TTY terminal session.
+### 1. `open_terminal`
+Opens a new Terminal.app window and returns a persistent handle for future operations.
 
 **Parameters:**
-- `shell` (string, optional): Shell to use (default: "bash")
 - `cwd` (string, optional): Working directory (default: current directory)
 
-**Returns:** Terminal ID and initial output
+**Returns:** Terminal ID, Window ID, and working directory
 
 **Example:**
-```
-Use tty_open tool with:
+```json
 {
-  "shell": "bash",
-  "cwd": "/Users/mayankketkar/projects"
+  "cwd": "/Users/mayankketkar/claude-tools/tmux"
 }
 ```
 
-### `tty_exec`
-Execute a command in an open terminal.
+**Use case:** Start of every workflow - get a terminal handle to work with
+
+---
+
+### 2. `send_command`
+Sends a command to a specific terminal using its ID. The command executes via osascript.
 
 **Parameters:**
-- `terminal_id` (string, required): Terminal ID from tty_open
-- `command` (string, required): Command to execute
-- `timeout` (number, optional): Timeout in seconds (default: 30)
+- `terminal_id` (string, required): Terminal ID from `open_terminal`
+- `command` (string, required): Shell command to execute
 
-**Returns:** Command output
+**Returns:** Command execution status
 
 **Example:**
-```
-Use tty_exec tool with:
+```json
 {
-  "terminal_id": "tty-1",
-  "command": "ls -la"
+  "terminal_id": "term-1",
+  "command": "echo 'Hello from MCP'"
 }
 ```
 
-### `tty_read`
-Read current output from a terminal.
+**Use case:** Execute any shell command in a managed terminal
+
+---
+
+### 3. `start_zellij_session`
+Starts a Zellij session in a terminal with optional layout file.
 
 **Parameters:**
-- `terminal_id` (string, required): Terminal ID
-- `timeout` (number, optional): How long to wait for output (default: 5)
+- `terminal_id` (string, required): Terminal ID to start Zellij in
+- `session_name` (string, optional): Zellij session name (auto-generated if not provided)
+- `layout_path` (string, optional): Path to Zellij layout KDL file
 
-**Returns:** Available output
+**Returns:** Session name and status
 
-### `tty_close`
-Close a terminal session.
+**Example:**
+```json
+{
+  "terminal_id": "term-1",
+  "session_name": "hyperpod-test",
+  "layout_path": "/Users/mayankketkar/.config/holocron/layouts/hyperpod.kdl"
+}
+```
+
+**Use case:** Launch your Zellij workspace in a controlled terminal
+
+---
+
+### 4. `zellij_action`
+Executes Zellij CLI actions (dump-layout, write-chars, new-pane, list-sessions) on a running session.
 
 **Parameters:**
-- `terminal_id` (string, required): Terminal ID to close
+- `terminal_id` (string, required): Terminal ID with active Zellij session
+- `action` (string, required): One of: `dump-layout`, `write-chars`, `new-pane`, `list-sessions`
+- `action_args` (object, optional): Action-specific arguments
+  - For `write-chars`: `{ "text": "string", "pane_id": "optional" }`
+  - For `new-pane`: `{ "direction": "right|down", "cwd": "/path" }`
 
-**Returns:** Confirmation message
+**Returns:** Action output (KDL for dump-layout, status for others)
 
-### `tty_list`
-List all open terminal sessions.
+**Examples:**
 
-**Returns:** List of terminal IDs with their status
-
-## Usage Examples
-
-### Example 1: Test Zellij Layout
-
-```
-Claude: I want to test the Zellij layout
-1. Use tty_open to create a terminal
-2. Use tty_exec with command "zellij --layout /path/to/layout.kdl"
-3. Use tty_read to check output
-4. Use tty_close when done
+Dump layout:
+```json
+{
+  "terminal_id": "term-1",
+  "action": "dump-layout"
+}
 ```
 
-### Example 2: Interactive Shell Session
-
+Write to a pane:
+```json
+{
+  "terminal_id": "term-1",
+  "action": "write-chars",
+  "action_args": {
+    "text": "ls -la\\n"
+  }
+}
 ```
-1. Open terminal: tty_open with cwd="/Users/mayankketkar/projects"
-2. Run command: tty_exec with command="git status"
-3. Another command: tty_exec with command="ls -la"
-4. Close: tty_close with terminal_id
+
+Create new pane:
+```json
+{
+  "terminal_id": "term-1",
+  "action": "new-pane",
+  "action_args": {
+    "direction": "right",
+    "cwd": "/tmp"
+  }
+}
 ```
 
-### Example 3: Long-Running Process
+**Use case:** Test Zellij operations and manipulate layouts
+
+---
+
+### 5. `capture_state`
+Captures and parses Zellij layout state and terminal content for verification.
+
+**Parameters:**
+- `terminal_id` (string, required): Terminal ID to capture state from
+
+**Returns:** Parsed layout information (panes, tabs, counts) and raw KDL
+
+**Example:**
+```json
+{
+  "terminal_id": "term-1"
+}
+```
+
+**Output format:**
+```
+=== Zellij Layout State ===
+Session: hyperpod-test
+Tabs: Tab1, Tab2
+Panes: Repo1, Repo2, K9s-Prod
+Total Pane Count: 8
+
+Raw Layout:
+layout {
+  ...
+}
+```
+
+**Use case:** Verify that your Zellij operations worked correctly
+
+---
+
+### 6. `list_terminals`
+Lists all managed terminal sessions with their metadata.
+
+**Parameters:** None
+
+**Returns:** List of all terminal sessions with IDs, window IDs, Zellij sessions, CWDs, and creation times
+
+**Example:**
+```json
+{}
+```
+
+**Use case:** Debug what terminals are active and their associated sessions
+
+## Complete Workflow Examples
+
+### Example 1: Basic Terminal Control
 
 ```
 1. Open terminal
-2. Start process: tty_exec with command="npm run dev"
-3. Check output periodically: tty_read
-4. Stop when done: tty_close
+   → open_terminal({ "cwd": "/Users/mayankketkar/projects" })
+   ← Returns: { terminal_id: "term-1", window_id: "12345", cwd: "..." }
+
+2. Execute commands
+   → send_command({ "terminal_id": "term-1", "command": "ls -la" })
+   → send_command({ "terminal_id": "term-1", "command": "git status" })
+
+3. List active sessions
+   → list_terminals({})
 ```
 
-## Testing Holocron with TTY
+### Example 2: Test Holocron Hyperpod Layout
 
-Once this MCP is registered, Claude Code can:
+```
+1. Open terminal in project directory
+   → open_terminal({ "cwd": "/Users/mayankketkar/claude-tools/tmux" })
+   ← terminal_id: "term-1"
 
-```python
-# 1. Open terminal
-terminal = tty_open(cwd="/Users/mayankketkar/claude-tools/tmux")
+2. Start Zellij with Hyperpod layout
+   → start_zellij_session({
+       "terminal_id": "term-1",
+       "session_name": "hyperpod-test",
+       "layout_path": "/Users/mayankketkar/.config/holocron/layouts/hyperpod.kdl"
+     })
 
-# 2. Create test environment
-tty_exec(terminal_id, "NO_CLEANUP=true ./src/scripts/test-setup.sh setup")
+3. Wait 2-3 seconds for layout to initialize
 
-# 3. Launch Zellij
-tty_exec(terminal_id, "zellij --layout /tmp/holocron-test-XXXX/.config/holocron/layouts/hyperpod.kdl")
+4. Dump and verify layout
+   → zellij_action({
+       "terminal_id": "term-1",
+       "action": "dump-layout"
+     })
+   ← Returns full KDL layout
 
-# 4. Capture screen/layout
-tty_exec(terminal_id, "zellij action dump-layout")
+5. Parse and verify
+   → capture_state({ "terminal_id": "term-1" })
+   ← Returns: Parsed info with pane counts, names, tabs
 
-# 5. Verify quadrants
-tty_read(terminal_id)
+6. Verify: Check that pane_count matches expected (e.g., 8 panes for Hyperpod)
+```
 
-# 6. Close
-tty_close(terminal_id)
+### Example 3: Test Zellij Write and New Pane
+
+```
+1. Open terminal and start Zellij
+   → open_terminal({ "cwd": "/tmp" })
+   → start_zellij_session({ "terminal_id": "term-1", "session_name": "test-session" })
+
+2. Write command to current pane
+   → zellij_action({
+       "terminal_id": "term-1",
+       "action": "write-chars",
+       "action_args": { "text": "echo 'Testing write-chars'\\n" }
+     })
+
+3. Create a new pane to the right
+   → zellij_action({
+       "terminal_id": "term-1",
+       "action": "new-pane",
+       "action_args": { "direction": "right" }
+     })
+
+4. Capture state to verify new pane was created
+   → capture_state({ "terminal_id": "term-1" })
+   ← Verify: pane_count increased by 1
+
+5. Dump layout to see structure
+   → zellij_action({ "terminal_id": "term-1", "action": "dump-layout" })
+```
+
+### Example 4: Automated Holocron Testing Pipeline
+
+```
+1. Setup test environment
+   → send_command({
+       "terminal_id": "term-1",
+       "command": "NO_CLEANUP=true ./src/scripts/test-setup.sh setup"
+     })
+
+2. Launch test Holocron instance
+   → start_zellij_session({
+       "terminal_id": "term-1",
+       "session_name": "holocron-test",
+       "layout_path": "/tmp/holocron-test-XXXX/.config/holocron/layouts/hyperpod.kdl"
+     })
+
+3. Wait for initialization (2-3 seconds)
+
+4. Verify quadrants
+   → capture_state({ "terminal_id": "term-1" })
+
+   Expected state:
+   - Q1: 3 stacked panes (Repo1, Repo2, Repo3)
+   - Q2: 1 pane (placeholder)
+   - Q3: 2-3 stacked panes (K8s clusters with k9s)
+   - Q4: 2-3 panes (cluster utilities)
+   - Total: 7-10 panes
+
+5. Test stacked pane switching in Q1
+   → zellij_action({
+       "action": "write-chars",
+       "action_args": { "text": "\\u001b[t" }  // Zellij keybinding to cycle panes
+     })
+
+6. Verify pane switched
+   → capture_state({ "terminal_id": "term-1" })
+
+7. Clean up
+   → send_command({ "command": "./src/scripts/test-setup.sh teardown" })
+```
+
+## Key Design Decisions
+
+### Why Persistent Handles?
+Traditional MCP servers create new terminals for each operation, losing context. This server maintains a `TerminalManager` that tracks terminal sessions, allowing you to:
+- Send multiple commands to the same terminal
+- Start Zellij and continue interacting with it
+- Verify state changes across operations
+
+### Why osascript for Mac?
+- Direct control of Terminal.app windows by ID
+- Ability to send commands to specific windows
+- Read terminal content for verification
+- Native macOS integration
+
+### Why Separate capture_state?
+Separating state capture from action execution allows you to:
+- Verify operations worked correctly
+- Parse KDL layouts programmatically
+- Test business logic without manual inspection
+- Build automated test suites
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Claude Code                          │
+│              (calls MCP tools via IPC)                  │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│              MCP Server (server.py)                     │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │         TerminalManager                           │  │
+│  │  - Tracks terminal_id → session mappings          │  │
+│  │  - Maintains window IDs and Zellij session names  │  │
+│  └───────────────────────────────────────────────────┘  │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │      MacTerminalController                        │  │
+│  │  - open_terminal() via osascript                  │  │
+│  │  - send_command() to specific window ID           │  │
+│  │  - get_window_content() for verification          │  │
+│  └───────────────────────────────────────────────────┘  │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │       ZellijController                            │  │
+│  │  - start_session() builds zellij commands         │  │
+│  │  - dump_layout() captures KDL                     │  │
+│  │  - write_chars(), new_pane() for manipulation     │  │
+│  │  - parse_layout() extracts structured data        │  │
+│  └───────────────────────────────────────────────────┘  │
+└────────────────────┬────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│              macOS System Layer                         │
+│  ┌──────────────────┐    ┌──────────────────────────┐  │
+│  │  Terminal.app    │◄───┤  osascript (AppleScript) │  │
+│  │  (window 12345)  │    └──────────────────────────┘  │
+│  │                  │                                    │
+│  │  ┌────────────┐  │                                    │
+│  │  │  Zellij    │  │◄───── zellij CLI (subprocess)     │
+│  │  │  Session   │  │                                    │
+│  │  └────────────┘  │                                    │
+│  └──────────────────┘                                    │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ## Troubleshooting
 
 ### MCP Server Not Loading
+1. Verify config at `~/.claude/mcp.json` or `.claude/mcp.json`
+2. Check Python 3 installed: `python3 --version`
+3. Restart Claude Code completely (not just reload)
+4. Check Claude Code logs for MCP connection errors
 
-1. Check Claude Code MCP config is valid JSON
-2. Verify Python 3 path: `which python3`
-3. Check server.py is executable: `chmod +x server.py`
-4. Restart Claude Code completely
+### osascript Permission Denied
+- macOS may require Accessibility permissions for Terminal control
+- Go to System Settings > Privacy & Security > Accessibility
+- Add Terminal.app and Claude Code if prompted
 
-### Terminal Commands Hang
+### Zellij Commands Fail
+- Ensure Zellij is installed: `which zellij`
+- Verify layout file paths are absolute
+- Check that Zellij session exists before running actions
 
-- Increase timeout parameter
-- Some interactive prompts may not work (use non-interactive flags)
-- Check if command requires user input
+### State Capture Returns Empty
+- Wait 2-3 seconds after starting Zellij for initialization
+- Verify Zellij session name matches what was used in `start_zellij_session`
+- Check Zellij is actually running: `zellij list-sessions`
 
-### Output Incomplete
-
-- Use tty_read with longer timeout
-- Some programs buffer output (add flush or use unbuffered mode)
+### Window ID Not Found
+- Terminal window may have been closed manually
+- Use `list_terminals` to see active sessions
+- Open new terminal if needed
 
 ## Technical Details
 
-- Uses Python's `pty` module for pseudo-terminal creation
-- Implements MCP stdio transport protocol
-- Handles multiple concurrent terminal sessions
-- Automatic buffer management and cleanup
+- **Language**: Python 3.7+
+- **Protocol**: MCP stdio transport (JSON-RPC)
+- **Terminal Control**: osascript (AppleScript) for macOS Terminal.app
+- **Zellij Control**: Direct CLI subprocess calls
+- **State Management**: In-memory session tracking (resets on server restart)
+- **Parsing**: Regex-based KDL parsing (sufficient for verification, not full KDL parser)
 
 ## Limitations
 
-- Some fully interactive TUI apps may not work perfectly
-- Terminal size is default (not customizable yet)
-- No terminal resizing support
-- Output capture is text-only (no ANSI escape sequence interpretation)
+- **macOS only**: Uses Terminal.app and osascript (no Linux/Windows support yet)
+- **Session persistence**: Terminal sessions lost if MCP server restarts
+- **KDL parsing**: Basic regex parsing, may miss complex KDL structures
+- **No streaming**: Commands execute and return; no real-time output streaming
+- **Terminal size**: Uses default terminal size (no configuration yet)
 
 ## Future Enhancements
 
-- Terminal size configuration
-- ANSI escape code parsing for better output visualization
-- Screen capture/dump to image
-- Terminal recording (session replay)
-- Bidirectional streaming
+- [ ] Linux support (iTerm2, Kitty, Alacritty via other methods)
+- [ ] Cross-platform PTY-based terminal control
+- [ ] Full KDL parser for robust layout parsing
+- [ ] Persistent session storage (survive MCP server restarts)
+- [ ] Streaming command output
+- [ ] Terminal size configuration
+- [ ] Screenshot/visual capture for verification
+- [ ] Zellij plugin integration for advanced control
+
+## Contributing
+
+This MCP server is part of the Holocron project. Contributions welcome!
 
 ## License
 
-Part of the Holocron project - MIT License
+MIT License - Part of the Holocron terminal workspace system

@@ -68,8 +68,10 @@ impl ZellijPlugin for State {
         match event {
             Event::PaneUpdate(pane_manifest) => {
                 // Update list of available terminal panes (exclude plugins)
+                // pane_manifest.panes is HashMap<usize, Vec<PaneInfo>> where key is tab_index
                 self.available_panes = pane_manifest.panes
                     .into_iter()
+                    .flat_map(|(_tab_index, panes)| panes)
                     .filter(|p| !p.is_plugin)
                     .collect();
 
@@ -93,7 +95,10 @@ impl ZellijPlugin for State {
             }
 
             Event::RunCommandResult(exit_code, stdout, stderr, context) => {
-                should_render = self.handle_command_result(exit_code, stdout, stderr, context);
+                // Convert Vec<u8> to String
+                let stdout_str = String::from_utf8_lossy(&stdout).to_string();
+                let stderr_str = String::from_utf8_lossy(&stderr).to_string();
+                should_render = self.handle_command_result(exit_code, stdout_str, stderr_str, context);
             }
 
             _ => {}
@@ -279,10 +284,12 @@ impl State {
             let marker = if idx == self.selected_index { "▶" } else { " " };
             let icon = self.get_pane_icon(pane);
 
-            let title = pane.title
-                .as_ref()
-                .map(|s| s.as_str())
-                .unwrap_or("Untitled");
+            // pane.title is now String, not Option<String>
+            let title = if pane.title.is_empty() {
+                "Untitled"
+            } else {
+                &pane.title
+            };
 
             println!("{} {} {}", marker, icon, title);
         }
@@ -361,13 +368,12 @@ impl State {
     }
 
     fn get_pane_icon(&self, pane: &PaneInfo) -> &str {
-        if let Some(title) = &pane.title {
-            let lower = title.to_lowercase();
-            if lower.contains("prod") { return "🔴"; }
-            if lower.contains("stag") { return "🟡"; }
-            if lower.contains("dev") { return "🟢"; }
-            if lower.contains("k9s") || lower.contains("k8s") { return "☸️"; }
-        }
+        // pane.title is now String, not Option<String>
+        let lower = pane.title.to_lowercase();
+        if lower.contains("prod") { return "🔴"; }
+        if lower.contains("stag") { return "🟡"; }
+        if lower.contains("dev") { return "🟢"; }
+        if lower.contains("k9s") || lower.contains("k8s") { return "☸️"; }
         "📄"
     }
 }

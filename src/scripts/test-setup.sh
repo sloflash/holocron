@@ -342,16 +342,16 @@ install_rust() {
 }
 
 setup_wasm_target() {
-    log_info "Adding wasm32-wasi target..."
+    log_info "Adding wasm32-wasip1 target..."
 
-    if ! rustup target list | grep -q "wasm32-wasi (installed)"; then
-        if ! rustup target add wasm32-wasi; then
-            log_error "Failed to add wasm32-wasi target"
+    if ! rustup target list | grep -q "wasm32-wasip1 (installed)"; then
+        if ! rustup target add wasm32-wasip1; then
+            log_error "Failed to add wasm32-wasip1 target"
             return 1
         fi
-        log_success "wasm32-wasi target added"
+        log_success "wasm32-wasip1 target added"
     else
-        log_success "wasm32-wasi target already installed"
+        log_success "wasm32-wasip1 target already installed"
     fi
 }
 
@@ -416,7 +416,7 @@ check_dependencies() {
         fi
     fi
 
-    # Ensure wasm32-wasi target is installed
+    # Ensure wasm32-wasip1 target is installed
     setup_wasm_target || log_warn "Failed to setup WASM target"
 
     # Build plugins

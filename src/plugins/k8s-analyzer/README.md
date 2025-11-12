@@ -14,10 +14,10 @@ Zellij plugin for AI-powered Kubernetes log analysis using Claude Haiku.
 ## Building
 
 ```bash
-cargo build --release
+cargo build --release --target wasm32-wasip1
 ```
 
-Output: `target/wasm32-wasi/release/k8s_analyzer.wasm`
+Output: `target/wasm32-wasip1/release/k8s_analyzer.wasm`
 
 ## Installation
 
@@ -25,7 +25,7 @@ Copy the WASM file to Zellij plugins directory:
 
 ```bash
 mkdir -p ~/.config/zellij/plugins
-cp target/wasm32-wasi/release/k8s_analyzer.wasm ~/.config/zellij/plugins/
+cp target/wasm32-wasip1/release/k8s_analyzer.wasm ~/.config/zellij/plugins/
 ```
 
 ## Usage
@@ -54,4 +54,4 @@ bind "Alt a" {
 
 - Zellij 0.40+
 - claude CLI installed and authenticated
-- Rust toolchain with wasm32-wasi target
+- Rust toolchain with wasm32-wasip1 target
