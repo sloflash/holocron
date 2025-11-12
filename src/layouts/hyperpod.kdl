@@ -11,19 +11,19 @@
 //   Customize repository paths and K8s contexts in the setup script
 //   This is a template - variables will be replaced during installation
 
-// Pane template for repository panes
-pane_template name="repo-pane" {
-    command "bash"
-    close_on_exit false
-}
-
-// Pane template for K8s monitoring panes
-pane_template name="k9s-pane" {
-    command "k9s"
-    close_on_exit false
-}
-
 layout {
+    // Pane template for repository panes
+    pane_template name="repo-pane" {
+        command "bash"
+        close_on_exit false
+    }
+
+    // Pane template for K8s monitoring panes
+    pane_template name="k9s-pane" {
+        command "k9s"
+        close_on_exit false
+    }
+
     // Default tab template with status bars
     default_tab_template {
         pane size=1 borderless=true {
