@@ -117,4 +117,34 @@ layout {
             }
         }
     }
+
+    // ========================================
+    // PANE FILTER PLUGIN (Optional)
+    // ========================================
+    // To enable the Pane Filter plugin, uncomment the tab below
+    // The plugin allows filtering panes by regex and executing methods on them
+    //
+    // tab name="Pane-Filter" {
+    //     pane {
+    //         plugin location="file:{{CONFIG_DIR}}/plugins/pane-filter.wasm" {
+    //             pane_filters "k9s,^repo-.*,.*bash.*"
+    //             methods_repo "your-org/your-methods-repo"
+    //             methods_branch "main"
+    //             methods_path "methods.json"
+    //         }
+    //     }
+    // }
+    //
+    // Or add a keybinding in your Zellij config (~/.config/zellij/config.kdl):
+    //
+    // keybinds {
+    //     normal {
+    //         bind "Ctrl p" {
+    //             LaunchPlugin "file:{{CONFIG_DIR}}/plugins/pane-filter.wasm" {
+    //                 pane_filters "k9s,bash"
+    //                 methods_repo "your-org/your-methods-repo"
+    //             }
+    //         }
+    //     }
+    // }
 }

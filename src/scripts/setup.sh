@@ -267,6 +267,83 @@ install_dependencies() {
 }
 
 # ============================================================================
+# Plugin Building
+# ============================================================================
+
+check_rust_installation() {
+    if command -v rustc &> /dev/null && command -v cargo &> /dev/null; then
+        log_success "Rust is installed ($(rustc --version))"
+        return 0
+    else
+        log_warn "Rust is not installed"
+        return 1
+    fi
+}
+
+install_rust() {
+    log_info "Installing Rust via rustup..."
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+    # Source the cargo env
+    if [[ -f "$HOME/.cargo/env" ]]; then
+        source "$HOME/.cargo/env"
+    fi
+
+    log_success "Rust installed successfully!"
+}
+
+build_pane_filter_plugin() {
+    echo ""
+    log_info "Building Pane Filter Plugin..."
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+    # Check if Rust is installed
+    if ! check_rust_installation; then
+        prompt "Rust is required to build the plugin. Install it? (y/n): "
+        read -r install_rust_choice
+
+        if [[ "$install_rust_choice" == "y" ]]; then
+            install_rust
+
+            # Add cargo to PATH for this session
+            export PATH="$HOME/.cargo/bin:$PATH"
+        else
+            log_warn "Skipping plugin build. You can build it later by running:"
+            echo "  cd $PROJECT_ROOT/plugins/pane-filter && ./build.sh"
+            return 0
+        fi
+    fi
+
+    # Add wasm32-wasi target if not present
+    if ! rustup target list | grep -q "wasm32-wasi (installed)"; then
+        log_info "Installing wasm32-wasi target..."
+        rustup target add wasm32-wasi
+    fi
+
+    # Build the plugin
+    local plugin_dir="$PROJECT_ROOT/plugins/pane-filter"
+    if [[ -f "$plugin_dir/build.sh" ]]; then
+        log_info "Compiling plugin to WASM..."
+        cd "$plugin_dir"
+
+        if bash ./build.sh; then
+            log_success "Plugin built successfully!"
+
+            # Copy to config directory
+            mkdir -p "$CONFIG_DIR/plugins"
+            cp pane-filter.wasm "$CONFIG_DIR/plugins/"
+            log_success "Plugin installed to $CONFIG_DIR/plugins/pane-filter.wasm"
+        else
+            log_warn "Plugin build failed. You can try building manually later."
+        fi
+
+        cd - > /dev/null
+    else
+        log_warn "Plugin build script not found at $plugin_dir/build.sh"
+    fi
+}
+
+# ============================================================================
 # Configuration Collection
 # ============================================================================
 
@@ -548,6 +625,9 @@ main() {
 
     # Install dependencies
     install_dependencies
+
+    # Build plugin
+    build_pane_filter_plugin
 
     # Collect configuration
     collect_repo_config

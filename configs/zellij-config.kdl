@@ -1,0 +1,66 @@
+// Zellij Configuration with Pane Filter Plugin Keybindings
+//
+// Copy this file to ~/.config/zellij/config.kdl or merge the keybindings
+// into your existing Zellij configuration
+//
+// Installation:
+// cp configs/zellij-config.kdl ~/.config/zellij/config.kdl
+
+keybinds {
+    normal {
+        // Launch Pane Filter Plugin with Ctrl+p
+        bind "Ctrl p" {
+            LaunchPlugin "file:~/.config/holocron/plugins/pane-filter.wasm" {
+                floating true
+                pane_filters "k9s,bash,repo"
+                methods_repo "your-org/your-methods-repo"
+                methods_branch "main"
+                methods_path "methods.json"
+            }
+        }
+
+        // Alternative: Launch with specific filters for K8s panes only
+        bind "Ctrl k" {
+            LaunchPlugin "file:~/.config/holocron/plugins/pane-filter.wasm" {
+                floating true
+                pane_filters "k9s,kubectl"
+                methods_repo "your-org/your-k8s-methods"
+            }
+        }
+
+        // Alternative: Launch for repository panes only
+        bind "Ctrl r" {
+            LaunchPlugin "file:~/.config/holocron/plugins/pane-filter.wasm" {
+                floating true
+                pane_filters "^repo-.*"
+                methods_repo "your-org/your-dev-methods"
+            }
+        }
+    }
+}
+
+// Theme configuration (optional)
+themes {
+    holocron {
+        fg "#d8dee9"
+        bg "#2e3440"
+        black "#3b4252"
+        red "#bf616a"
+        green "#a3be8c"
+        yellow "#ebcb8b"
+        blue "#81a1c1"
+        magenta "#b48ead"
+        cyan "#88c0d0"
+        white "#e5e9f0"
+        orange "#d08770"
+    }
+}
+
+// Apply the theme
+theme "holocron"
+
+// Default settings
+default_shell "bash"
+pane_frames false
+simplified_ui false
+default_layout "hyperpod"

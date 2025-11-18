@@ -10,6 +10,7 @@
 - **📦 Portable Setup**: One command installs and configures across all your machines
 - **🔄 Git Integration**: Automatically clones and manages your repositories
 - **☸️ Kubernetes Ready**: Built-in k9s integration with multi-cluster support
+- **🔌 Pane Filter Plugin**: Filter panes by regex and execute configurable methods/actions
 - **🛠️ Dependency Management**: Automatically installs Zellij, kubectl, k9s, and more
 - **⚙️ Highly Configurable**: YAML-based configuration with sensible defaults
 - **🚀 Fast Workspace Switching**: Get coding in seconds, not minutes
@@ -48,11 +49,12 @@ cd holocron
 
 The installer will:
 1. ✅ Check and install dependencies (Zellij, kubectl, k9s, etc.)
-2. 📝 Prompt for your git repository URLs
-3. 📝 Prompt for your Kubernetes contexts
-4. 📂 Clone repositories to `~/.holocron/workspace/`
-5. ⚙️ Generate customized Zellij layout
-6. 🚀 Create `holocron` launcher command
+2. 🦀 Optionally install Rust and build the Pane Filter plugin
+3. 📝 Prompt for your git repository URLs
+4. 📝 Prompt for your Kubernetes contexts
+5. 📂 Clone repositories to `~/.holocron/workspace/`
+6. ⚙️ Generate customized Zellij layout
+7. 🚀 Create `holocron` launcher command
 
 ### Manual Installation
 
@@ -126,8 +128,10 @@ The layout is generated from your configuration during setup. You can edit it di
 
 ~/.config/holocron/
 ├── config.yaml     # Your configuration
-└── layouts/
-    └── hyperpod.kdl  # Generated layout
+├── layouts/
+│   └── hyperpod.kdl  # Generated layout
+└── plugins/
+    └── pane-filter.wasm  # Pane Filter plugin
 ```
 
 ## 🧪 Testing with Minikube
@@ -157,9 +161,66 @@ This will create 3 minikube contexts for testing:
 
 The installer will help you install missing dependencies.
 
+## 🔌 Pane Filter Plugin
+
+The Pane Filter plugin is a powerful Zellij plugin that allows you to:
+
+- **Filter panes** using regex patterns (e.g., "k9s", "bash", "^repo-.*")
+- **Execute methods** on selected panes (kubectl commands, git operations, Docker commands)
+- **Configure methods** via a GitHub repository with JSON configuration
+- **Run Docker containers** for debugging and utilities
+
+### Quick Start
+
+1. **Launch the plugin** with `Ctrl+p` (requires keybinding setup)
+2. **Browse filtered panes** using ↑/↓ arrows
+3. **Select a pane** and press Enter to see available methods
+4. **Execute a method** on the pane
+
+### Configuration
+
+Create a methods repository on GitHub with a `methods.json` file:
+
+```json
+{
+  "version": "1.0.0",
+  "methods": [
+    {
+      "id": "restart-pod",
+      "name": "Restart Pod",
+      "description": "Restart the currently selected Kubernetes pod",
+      "command": "kubectl",
+      "args": ["delete", "pod", "--grace-period=0"],
+      "requires_confirmation": true
+    }
+  ]
+}
+```
+
+### Setup Keybinding
+
+Add to `~/.config/zellij/config.kdl`:
+
+```kdl
+keybinds {
+    normal {
+        bind "Ctrl p" {
+            LaunchPlugin "file:~/.config/holocron/plugins/pane-filter.wasm" {
+                floating true
+                pane_filters "k9s,bash,repo"
+                methods_repo "your-org/your-methods-repo"
+            }
+        }
+    }
+}
+```
+
+See [plugins/pane-filter/README.md](plugins/pane-filter/README.md) for complete documentation.
+
 ## 📚 Documentation
 
 - [spec.md](spec.md) - Full technical specification
+- [plugins/pane-filter/README.md](plugins/pane-filter/README.md) - Pane Filter plugin documentation
 - [Zellij Documentation](https://zellij.dev/documentation/) - Learn about Zellij
 - [Claude Code Skill](.claude/skills/zellij/) - Zellij expertise for development
 
@@ -178,6 +239,7 @@ Contributions welcome! Please:
 - [x] Repository management
 - [x] Kubernetes integration
 - [x] Dependency installation
+- [x] Pane Filter plugin
 - [ ] Minikube test setup
 - [ ] Pipe-based Q3 → Q4 communication
 - [ ] Custom Q4 utilities

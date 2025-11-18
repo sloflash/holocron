@@ -1,0 +1,40 @@
+// Pane Filter Plugin Configuration
+// This plugin allows filtering panes by regex patterns and executing methods on them
+
+plugin {
+    location "file:pane-filter.wasm"
+
+    // Configuration for the plugin
+    configuration {
+        // List of regex patterns to filter panes
+        // Examples:
+        //   - "k9s" - matches any pane with "k9s" in the title
+        //   - "^repo-.*" - matches panes starting with "repo-"
+        //   - ".*bash.*" - matches panes containing "bash"
+        pane_filters "k9s,^repo-.*,.*bash.*"
+
+        // GitHub repository containing method configurations
+        // Format: "owner/repo" or full GitHub URL
+        // This repo should contain a methods.json file (or custom path below)
+        methods_repo "your-org/your-methods-repo"
+
+        // Branch to fetch methods from (default: main)
+        methods_branch "main"
+
+        // Path to methods.json within the repository (default: methods.json)
+        methods_path "methods.json"
+    }
+}
+
+// Alternative JSON configuration format:
+// plugin {
+//     location "file:pane-filter.wasm"
+//     configuration {
+//         _json "{
+//             \"pane_filters\": [\"k9s\", \"^repo-.*\", \".*bash.*\"],
+//             \"methods_repo\": \"your-org/your-methods-repo\",
+//             \"methods_branch\": \"main\",
+//             \"methods_path\": \"methods.json\"
+//         }"
+//     }
+// }

@@ -1,0 +1,98 @@
+{
+  "version": "1.0.0",
+  "methods": [
+    {
+      "id": "restart-pod",
+      "name": "Restart Pod",
+      "description": "Restart the currently selected Kubernetes pod",
+      "command": "kubectl",
+      "args": ["delete", "pod", "--grace-period=0"],
+      "env": {},
+      "requires_confirmation": true
+    },
+    {
+      "id": "logs-tail",
+      "name": "Tail Logs",
+      "description": "Show real-time logs from the selected resource",
+      "command": "kubectl",
+      "args": ["logs", "-f"],
+      "env": {},
+      "requires_confirmation": false
+    },
+    {
+      "id": "describe-resource",
+      "name": "Describe Resource",
+      "description": "Show detailed information about the selected resource",
+      "command": "kubectl",
+      "args": ["describe"],
+      "env": {},
+      "requires_confirmation": false
+    },
+    {
+      "id": "port-forward",
+      "name": "Port Forward",
+      "description": "Forward port from selected pod to localhost",
+      "command": "kubectl",
+      "args": ["port-forward"],
+      "env": {},
+      "requires_confirmation": false
+    },
+    {
+      "id": "exec-shell",
+      "name": "Exec Shell",
+      "description": "Open an interactive shell in the selected pod",
+      "command": "kubectl",
+      "args": ["exec", "-it", "--", "/bin/bash"],
+      "env": {},
+      "requires_confirmation": false
+    },
+    {
+      "id": "docker-debug",
+      "name": "Debug with Docker",
+      "description": "Run debugging tools in a container",
+      "docker_image": "nicolaka/netshoot",
+      "command": "bash",
+      "args": [],
+      "env": {
+        "DEBUG_MODE": "true"
+      },
+      "requires_confirmation": false
+    },
+    {
+      "id": "git-status",
+      "name": "Git Status",
+      "description": "Show git status in the pane's working directory",
+      "command": "git",
+      "args": ["status"],
+      "env": {},
+      "requires_confirmation": false
+    },
+    {
+      "id": "git-pull",
+      "name": "Git Pull",
+      "description": "Pull latest changes from remote",
+      "command": "git",
+      "args": ["pull"],
+      "env": {},
+      "requires_confirmation": true
+    },
+    {
+      "id": "npm-install",
+      "name": "NPM Install",
+      "description": "Install npm dependencies",
+      "command": "npm",
+      "args": ["install"],
+      "env": {},
+      "requires_confirmation": false
+    },
+    {
+      "id": "docker-ps",
+      "name": "Docker PS",
+      "description": "List running Docker containers",
+      "command": "docker",
+      "args": ["ps"],
+      "env": {},
+      "requires_confirmation": false
+    }
+  ]
+}

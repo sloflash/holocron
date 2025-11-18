@@ -12,3 +12,12 @@
 *.tmp
 *.swp
 *~
+
+# Rust / Cargo
+target/
+Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# WASM build artifacts
+*.wasm

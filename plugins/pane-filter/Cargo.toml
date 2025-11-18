@@ -1,0 +1,20 @@
+[package]
+name = "pane-filter"
+version = "0.1.0"
+edition = "2021"
+authors = ["Holocron"]
+description = "Zellij plugin for filtering panes and executing configurable methods"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+zellij-tile = "0.41.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+regex = "1.10"
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
